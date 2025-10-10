@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:swallow_app/models/company_type.dart';
 import 'package:swallow_app/models/interest.dart';
 import 'package:swallow_app/models/user_role_company.dart';

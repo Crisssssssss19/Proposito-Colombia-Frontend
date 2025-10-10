@@ -1,5 +1,7 @@
+import '../services/vacancy_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:swallow_app/dtos/requirement_dto.dart';
 import 'package:swallow_app/models/api_response.dart';
 import 'package:swallow_app/models/requirement.dart';
 
@@ -12,7 +14,7 @@ class RequirementService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "id": requisito.id,
-        "idVacante": requisito.idVacante,
+        "idVacante": requisito.vacante.id,
         "tituloRequisito": requisito.tituloRequisito,
         "detalleRequsito": requisito.detalleRequisito,
         "ordenRequisito": requisito.ordenRequisito,
@@ -23,9 +25,9 @@ class RequirementService {
       final jsonData = jsonDecode(response.body);
       final apiResponse = ApiResponse.fromJson(
         jsonData,
-        (data) => Requirement.fromJson(data),
+        (data) => RequirementDto.fromJson(data),
       );
-      return apiResponse.datos;
+      return _mapDtoToModel(apiResponse.datos);
     } else {
       throw Exception("Error al crear el requisito: ${response.body}");
     }
@@ -37,7 +39,7 @@ class RequirementService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "id": requisito.id,
-        "idVacante": requisito.idVacante,
+        "idVacante": requisito.vacante.id,
         "tituloRequisito": requisito.tituloRequisito,
         "detalleRequsito": requisito.detalleRequisito,
         "ordenRequisito": requisito.ordenRequisito,
@@ -48,9 +50,9 @@ class RequirementService {
       final jsonData = jsonDecode(response.body);
       final apiResponse = ApiResponse.fromJson(
         jsonData,
-        (data) => Requirement.fromJson(data),
+        (data) => RequirementDto.fromJson(data),
       );
-      return apiResponse.datos;
+      return _mapDtoToModel(apiResponse.datos);
     } else {
       throw Exception("Error al actualizar el requisito: ${response.body}");
     }
@@ -74,10 +76,10 @@ class RequirementService {
       final apiResponse = ApiResponse.fromJson(
         jsonData,
         (data) => (data as List)
-            .map((item) => Requirement.fromJson(item))
+            .map((item) => RequirementDto.fromJson(item))
             .toList(),
       );
-      return apiResponse.datos;
+      return Future.wait(apiResponse.datos.map((dto) => _mapDtoToModel(dto)));
     } else {
       throw Exception("Error al obtener los requisitos: ${response.body}");
     }
@@ -91,12 +93,38 @@ class RequirementService {
       final apiResponse = ApiResponse.fromJson(
         jsonData,
         (data) => (data as List)
-            .map((item) => Requirement.fromJson(item))
+            .map((item) => RequirementDto.fromJson(item))
             .toList(),
       );
-      return apiResponse.datos;
+      return Future.wait(apiResponse.datos.map((dto) => _mapDtoToModel(dto)));
     } else {
       throw Exception("Error al obtener los requisitos por vacante: ${response.body}");
     }
+  }
+
+  Future<Requirement> getRequisitoById(int id) async {
+    final response = await http.get(Uri.parse("$baseUrl/obtener/$id"));
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      final apiResponse = ApiResponse.fromJson(
+        jsonData,
+        (data) => RequirementDto.fromJson(data),
+      );
+      return _mapDtoToModel(apiResponse.datos);
+    } else {
+      throw Exception("Error al obtener el requisito: ${response.body}");
+    }
+  }
+
+  Future<Requirement> _mapDtoToModel(RequirementDto dto) async {
+    final vacante = await VacancyService().getVacanteById(dto.idVacante);
+    return Requirement(
+      id: dto.id,
+      vacante: vacante,
+      tituloRequisito: dto.tituloRequisito,
+      detalleRequisito: dto.detalleRequisito,
+      ordenRequisito: dto.ordenRequisito,
+    );
   }
 }

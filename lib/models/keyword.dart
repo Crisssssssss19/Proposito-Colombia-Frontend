@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:swallow_app/models/user.dart';
 import 'package:swallow_app/models/vacancy.dart';
 

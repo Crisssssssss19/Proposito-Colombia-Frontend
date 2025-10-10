@@ -1,22 +1,28 @@
-import 'dart:convert';
-
+import 'package:swallow_app/models/contract.dart';
+import 'package:swallow_app/models/frequency.dart';
+import 'package:swallow_app/models/journey.dart';
+import 'package:swallow_app/models/keyword.dart';
+import 'package:swallow_app/models/location.dart';
+import 'package:swallow_app/models/modality.dart';
+import 'package:swallow_app/models/requirement.dart';
+import 'package:swallow_app/models/salary_range.dart';
 import 'package:swallow_app/models/user_role_company_id.dart';
 
 class Vacancy {
   final int id;
-  final int idUbicacion;
+  final Location idUbicacion;
   final String tituloVacante;
   final String descripcionCorta;
   final DateTime fechaInicioVacante;
   final DateTime fechaFinVacante;
   final int estadoVacante;
-  final List<int> palabrasClaveIds;
-  final List<int> requisitoIds;
-  final int idRangoSalarial;
-  final int idJornada;
-  final int idModalidad;
-  final int idContrato;
-  final int idPeriodicidad;
+  final List<Keyword> palabrasClaveIds;
+  final List<Requirement> requisitoIds;
+  final SalaryRange idRangoSalarial;
+  final Journey idJornada;
+  final Modality idModalidad;
+  final Contract idContrato;
+  final Frequency idPeriodicidad;
   final UserRoleCompanyId relUsuarioEmpresaId;
 
   Vacancy({
