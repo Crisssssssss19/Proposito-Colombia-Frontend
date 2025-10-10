@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     InkWell(
                       onTap: () {
-                        Navigator.of(context).pushNamed(RouteNames.register);
+                        Navigator.of(context).pushNamed(RouteNames.selectUserType);
                       },
                       child: Text(
                         'Regístrate',

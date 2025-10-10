@@ -32,7 +32,7 @@ class SwallowApp extends StatelessWidget {
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
             themeMode: themeProvider.themeMode,
-            initialRoute: RouteNames.login,
+            initialRoute: RouteNames.LoadingInicio,
             onGenerateRoute: AppRouter.generateRoute,
             debugShowCheckedModeBanner: false,
           );

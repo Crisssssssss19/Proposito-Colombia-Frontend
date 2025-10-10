@@ -1,7 +1,15 @@
 class RouteNames {
-  static const String loading = '/';
+  static const String LoadingInicio = '/';
+  static const String welcome = '/welcome';
   static const String login = '/login';
-  static const String register = '/register';
+  static const String selectUserType = '/select-user-type';
+  static const String registerCandidato = '/registerCandidato';
+  static const String registerEmpresa = '/registerEmpresa';
+  static const String phone_verification_can = '/phone-verification-can';
+  static const String phone_verification_emp = '/phone-verification-emp';
+  static const String phone_code_can = '/phone-code-can';
+  static const String phone_code_emp = '/phone-code-emp';
+  static const String welcome_register = '/welcome-register';
 
   // Candidato
   static const String homeCandidato = '/home-candidato';
