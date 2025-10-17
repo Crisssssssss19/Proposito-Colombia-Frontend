@@ -14,15 +14,15 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _correoCtrl = TextEditingController();
+  final _claveCtrl = TextEditingController();
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  bool _verClave = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _correoCtrl.dispose();
+    _claveCtrl.dispose();
     super.dispose();
   }
 
@@ -30,138 +30,119 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
     final success = await authProvider.login(
-      _emailController.text.trim(),
-      _passwordController.text,
+      correoAcceso: _correoCtrl.text.trim(),
+      claveAcceso: _claveCtrl.text.trim(),
     );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-      if (success) {
-        // Navegar según tipo de usuario
-        final route = authProvider.isCandidate
-            ? RouteNames.homeCandidato
-            : RouteNames.homeEmpresa;
-
-        Navigator.of(context).pushReplacementNamed(route);
+    if (success) {
+      final role = authProvider.userRole ?? '';
+      if(role == 'ASPIRANTE'){
+        Navigator.pushReplacementNamed(context, RouteNames.homeCandidato);
+      } else if(role == 'EMPRESA'){
+        Navigator.pushReplacementNamed(context, RouteNames.homeEmpresa);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Error al iniciar sesión'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? 'Error al iniciar sesión'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
+      backgroundColor: const Color(0xFF071739),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(30),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
-                const Golondrina(title: 'Bienvenido'),
+                const Golondrina(title: 'Bienvenido a Swallow'),
                 const SizedBox(height: 40),
 
-                // Email
+                // Correo
                 TextFormField(
-                  controller: _emailController,
+                  controller: _correoCtrl,
                   keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: 'Correo electrónico',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    prefixIcon: const Icon(Icons.email, color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white10,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Email inválido';
+                      return 'Por favor ingresa tu correo';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
 
-                // Password
+                // Clave
                 TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
+                  controller: _claveCtrl,
+                  obscureText: !_verClave,
+                  style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outlined),
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    prefixIcon: const Icon(Icons.lock, color: Colors.white70),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                        _verClave ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.white70,
                       ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
+                      onPressed: () => setState(() => _verClave = !_verClave),
                     ),
+                    filled: true,
+                    fillColor: Colors.white10,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Por favor ingresa tu contraseña';
                     }
-                    if (value.length < 6) {
-                      return 'La contraseña debe tener al menos 6 caracteres';
-                    }
                     return null;
                   },
                 ),
+
                 const SizedBox(height: 30),
 
-                // Botón Login
                 _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const CircularProgressIndicator(color: Colors.white)
                     : ButtonCustom(
-                  text: 'Iniciar Sesión',
-                  onPressed: _handleLogin,
-                ),
+                        text: 'Iniciar Sesión',
+                        onPressed: _handleLogin,
+                      ),
 
                 const SizedBox(height: 20),
-
-                // Link a registro
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '¿No tienes cuenta? ',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    InkWell(
-                      onTap: () {
-                        Navigator.of(context).pushNamed(RouteNames.selectUserType);
-                      },
-                      child: Text(
-                        'Regístrate',
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, RouteNames.welcome);
+                  },
+                  child: const Text(
+                    '← Volver',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
