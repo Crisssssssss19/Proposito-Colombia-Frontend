@@ -118,8 +118,8 @@ class _PhoneCodeCanScreenState extends State<PhoneCodeCanScreen> {
               ),
               const SizedBox(height: 4),
 
-              const Text(
-                '+57 3001234567',
+              Text(
+                '${widget.countryCode} ${widget.phoneNumber}',
                 style: TextStyle(
                   color: Colors.lightBlueAccent,
                   fontSize: 15,
