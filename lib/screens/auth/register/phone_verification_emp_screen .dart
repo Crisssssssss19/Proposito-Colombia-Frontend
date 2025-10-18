@@ -13,7 +13,7 @@ class PhoneVerificationEmpScreen extends StatefulWidget {
 
 class _PhoneVerificationEmpScreenState extends State<PhoneVerificationEmpScreen> {
   final TextEditingController _phoneController = TextEditingController();
-  String countryCode = '%2B57';
+  String countryCode = '+57';
 
   @override
   Widget build(BuildContext context) {
@@ -66,15 +66,15 @@ class _PhoneVerificationEmpScreenState extends State<PhoneVerificationEmpScreen>
                         value: countryCode,
                         items: const [
                           DropdownMenuItem(
-                            value: '%2B57',
+                            value: '+57',
                             child: Text('+57', style: TextStyle(color: Colors.white)),
                           ),
                           DropdownMenuItem(
-                            value: '%2B1',
+                            value: '+1',
                             child: Text('+1', style: TextStyle(color: Colors.white)),
                           ),
                           DropdownMenuItem(
-                            value: '%2B52',
+                            value: '+52',
                             child: Text('+52', style: TextStyle(color: Colors.white)),
                           ),
                         ],

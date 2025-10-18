@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:swallow_app/routes/route_names.dart';
 import 'package:swallow_app/widgets/misc/golondrina.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/pre_register_provider.dart';
 
 class PhoneCodeEmpScreen extends StatefulWidget {
   final String countryCode;
@@ -54,13 +56,23 @@ class _PhoneCodeEmpScreenState extends State<PhoneCodeEmpScreen> {
   String get _enteredCode =>
       _controllers.map((c) => c.text).join();
 
-  void _verifyCode() {
+  Future<void> _verifyCode() async {
     if (_enteredCode.length == 6) {
-      // Aquí luego conectarás con el backend (verificación real)
-      ScaffoldMessenger.of(context).showSnackBar(
+      final codigo = _enteredCode;
+      final numero = '${widget.countryCode}${widget.phoneNumber}';
+      final preRegistro = context.read<PreRegistroProvider>();
+
+      final ok = await preRegistro.validarCodigo(numero, codigo);
+      if(ok){
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Código verificado correctamente ✅')),
-      );
-      Navigator.pushNamed(context, RouteNames.registerEmpresa, arguments: {'phoneNumber': '${widget.countryCode}${widget.phoneNumber}'},);
+        );
+        Navigator.pushNamed(context, RouteNames.registerCandidato, arguments: {'phoneNumber': numero},);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(preRegistro.errorMessage ?? 'Error al verificar el código'), backgroundColor: Colors.red,),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor ingresa los 6 dígitos')),
@@ -107,8 +119,8 @@ class _PhoneCodeEmpScreenState extends State<PhoneCodeEmpScreen> {
               ),
               const SizedBox(height: 4),
 
-              const Text(
-                '+57 3001234567',
+              Text(
+                '${widget.countryCode} ${widget.phoneNumber}',
                 style: TextStyle(
                   color: Colors.lightBlueAccent,
                   fontSize: 15,
