@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/pre_register_provider.dart';
 import 'providers/vacancy_provider.dart';
 import 'providers/candidate_provider.dart';
 import 'providers/application_provider.dart';
@@ -21,6 +22,7 @@ class SwallowApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => PreRegistroProvider()),
         ChangeNotifierProvider(create: (_) => VacancyProvider()),
         ChangeNotifierProvider(create: (_) => CandidateProvider()),
         ChangeNotifierProvider(create: (_) => ApplicationProvider()),

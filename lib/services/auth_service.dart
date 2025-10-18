@@ -45,7 +45,7 @@ class AuthService {
     );
 
     if (response.statusCode == 201) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      return jsonDecode(response.body);
     } else {
       throw Exception('Error al registrar usuario (${response.statusCode})');
     }

@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../widgets/misc/golondrina.dart';
+import '../../../routes/route_names.dart';
 
 class RegisterCandidatoScreen extends StatefulWidget {
-  const RegisterCandidatoScreen({super.key});
+  final String phoneNumber;
+  const RegisterCandidatoScreen({
+    super.key,
+    required this.phoneNumber,
+  });
 
   @override
   State<RegisterCandidatoScreen> createState() => _RegisterCandidatoScreenState();
@@ -12,8 +19,6 @@ class _RegisterCandidatoScreenState extends State<RegisterCandidatoScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nombreCtrl = TextEditingController();
   final TextEditingController _apellidoCtrl = TextEditingController();
-  final TextEditingController _tipoDocCtrl = TextEditingController();
-  final TextEditingController _numDocCtrl = TextEditingController();
   final TextEditingController _correoCtrl = TextEditingController();
   final TextEditingController _claveCtrl = TextEditingController();
   final TextEditingController _confirmarClaveCtrl = TextEditingController();
@@ -23,6 +28,8 @@ class _RegisterCandidatoScreenState extends State<RegisterCandidatoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+
     return Scaffold(
       backgroundColor: const Color(0xFF071739),
       body: SafeArea(
@@ -35,7 +42,10 @@ class _RegisterCandidatoScreenState extends State<RegisterCandidatoScreen> {
               const SizedBox(height: 20),
               _buildForm(),
               const SizedBox(height: 20),
-              _buildBottomButtons(context),
+              if (authProvider.isLoading)
+                const CircularProgressIndicator(color: Colors.white),
+              if (!authProvider.isLoading)
+                _buildBottomButtons(context, authProvider),
             ],
           ),
         ),
@@ -50,8 +60,6 @@ class _RegisterCandidatoScreenState extends State<RegisterCandidatoScreen> {
         children: [
           _inputField("Nombre", _nombreCtrl),
           _inputField("Apellido", _apellidoCtrl),
-          _inputField("Tipo de documento", _tipoDocCtrl),
-          _inputField("Número de documento", _numDocCtrl),
           _inputField("Correo electrónico", _correoCtrl, icon: Icons.email),
           _inputField("Contraseña", _claveCtrl,
               icon: Icons.lock, isPassword: true, showPassword: _verClave, onToggle: () {
@@ -92,20 +100,30 @@ class _RegisterCandidatoScreenState extends State<RegisterCandidatoScreen> {
     );
   }
 
-  Widget _buildBottomButtons(BuildContext context) {
+  Widget _buildBottomButtons(BuildContext context, AuthProvider authProvider) {
     return Column(
       children: [
-        const Text(
-          "Al registrarte, aceptas nuestros Términos y Condiciones y Política de Privacidad",
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              // TODO: Lógica de registro con backend
-              Navigator.pushNamed(context, '/welcome-register', arguments: {'userType': 'candidato'});
+              final telefono = widget.phoneNumber;
+              final ok = await authProvider.register(
+                nombres: _nombreCtrl.text.trim(),
+                apellidos: _apellidoCtrl.text.trim(),
+                correoAcceso: _correoCtrl.text.trim(),
+                claveAcceso: _claveCtrl.text.trim(),
+                telefono: telefono,
+                isEmpresa: false,
+              );
+
+              if (ok) {
+                Navigator.pushNamed(context, RouteNames.welcome_register,
+                    arguments: {'userType': 'candidato'});
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(authProvider.errorMessage ?? 'Error')),
+                );
+              }
             }
           },
           style: ElevatedButton.styleFrom(
@@ -113,7 +131,7 @@ class _RegisterCandidatoScreenState extends State<RegisterCandidatoScreen> {
             minimumSize: const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: const Text("Registrarme como Aspirante", style: TextStyle(fontSize: 16)),
+          child: const Text("Registrarme como Aspirante"),
         ),
         const SizedBox(height: 10),
         TextButton(

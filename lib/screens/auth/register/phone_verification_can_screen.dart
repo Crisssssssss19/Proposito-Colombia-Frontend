@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:swallow_app/routes/route_names.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/pre_register_provider.dart';
 import 'package:swallow_app/widgets/misc/golondrina.dart';
 
 class PhoneVerificationCanScreen extends StatefulWidget {
@@ -120,9 +122,20 @@ class _PhoneVerificationCanScreenState extends State<PhoneVerificationCanScreen>
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {
-                    // Aquí luego conectamos con el backend (enviar código)
-                    Navigator.pushNamed(context, RouteNames.phone_code_can);
+                  onPressed: () async {
+                    final numero = '${countryCode}${_phoneController.text.trim()}';
+                    final preRegistro = context.read<PreRegistroProvider>();
+                    final ok = await preRegistro.enviarCodigo(numero);
+                    if(ok){
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Código enviado correctamente')),
+                      );
+                      Navigator.pushNamed(context, RouteNames.phone_code_can, arguments: {'countryCode': countryCode, 'phoneNumber': _phoneController.text.trim()},);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(preRegistro.errorMessage ?? 'Error al enviar el código'), backgroundColor: Colors.red,),
+                      );
+                    }
                   },
                   child: const Text(
                     'Continuar',

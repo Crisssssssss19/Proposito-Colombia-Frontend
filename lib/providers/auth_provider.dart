@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../services/auth_service.dart';
+import 'dart:math';
 import '../services/storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -19,7 +20,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
 
-  // ✅ LOGIN
+  // LOGIN
   Future<bool> login({
     required String correoAcceso,
     required String claveAcceso,
@@ -60,36 +61,56 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ REGISTRO
-  Future<bool> register(Map<String, dynamic> body) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  // REGISTRO
 
-    try {
-      final response = await _authService.register(body);
+  String _randomValue() => "XXX_${Random().nextInt(9999999)}";
+  Future<bool> register({
+    required String nombres,
+    required String apellidos,
+    required String correoAcceso,
+    required String claveAcceso,
+    required String telefono,
+    required bool isEmpresa,
+  }) async {
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
 
-      // Guardar si devuelve token o datos
-      if (response.containsKey('datos')) {
-        final data = response['datos'];
-        _token = data['token'];
-        _userRole = data['roles']?.first ?? 'ASPIRANTE';
-        await _storageService.saveToken(_token!);
-        await _storageService.saveUserType(_userRole!);
-      }
+  try {
+    final body = {
+      "nombresUsuario": nombres,
+      "apellidosUsuario": apellidos.isEmpty ? "XXX_${_randomValue()}" : apellidos,
+      "tipoDocumentoUsuario": 1,
+      "documentoUsuario": _randomValue(),
+      "idUbicacion": 101, // de ejemplo
+      "estadoUsuario": 1,
+      "telefonoUsuario": telefono.replaceAll(' ', ''),
+      "correoAcceso": correoAcceso,
+      "claveAcceso": claveAcceso,
+      "roles": [isEmpresa ? 'Empresa' : 'Aspirante']
+    };
 
+    final response = await _authService.register(body);
+    if (response['codigoEstado'] == 201) {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
+    } else {
+      _errorMessage = response['mensaje'] ?? 'Error en el registro';
       _isLoading = false;
-      _errorMessage = e.toString();
       notifyListeners();
       return false;
     }
+  } catch (e) {
+    _isLoading = false;
+    _errorMessage = e.toString();
+    notifyListeners();
+    return false;
   }
+}
 
-  // ✅ LOGOUT
+
+  // LOGOUT
   Future<void> logout() async {
     _token = null;
     _userRole = null;

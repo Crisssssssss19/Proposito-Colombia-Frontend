@@ -2,9 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:swallow_app/widgets/misc/golondrina.dart';
 import 'package:swallow_app/routes/route_names.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/pre_register_provider.dart';
 
 class PhoneCodeCanScreen extends StatefulWidget {
-  const PhoneCodeCanScreen({super.key});
+  final String countryCode;
+  final String phoneNumber;
+  const PhoneCodeCanScreen({super.key, required this.countryCode, required this.phoneNumber});
 
   @override
   State<PhoneCodeCanScreen> createState() => _PhoneCodeCanScreenState();
@@ -51,13 +55,23 @@ class _PhoneCodeCanScreenState extends State<PhoneCodeCanScreen> {
   String get _enteredCode =>
       _controllers.map((c) => c.text).join();
 
-  void _verifyCode() {
+  Future<void> _verifyCode() async {
     if (_enteredCode.length == 6) {
-      // Aquí luego conectarás con el backend (verificación real)
-      ScaffoldMessenger.of(context).showSnackBar(
+      final codigo = _enteredCode;
+      final numero = '${widget.countryCode}${widget.phoneNumber}';
+      final preRegistro = context.read<PreRegistroProvider>();
+
+      final ok = await preRegistro.validarCodigo(numero, codigo);
+      if(ok){
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Código verificado correctamente ✅')),
-      );
-      Navigator.pushNamed(context, RouteNames.registerCandidato);
+        );
+        Navigator.pushNamed(context, RouteNames.registerCandidato, arguments: {'phoneNumber': numero},);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(preRegistro.errorMessage ?? 'Error al verificar el código'), backgroundColor: Colors.red,),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor ingresa los 6 dígitos')),

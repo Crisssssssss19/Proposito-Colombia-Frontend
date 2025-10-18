@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:swallow_app/routes/route_names.dart';
 import 'package:swallow_app/widgets/misc/golondrina.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/pre_register_provider.dart';
 
 class PhoneVerificationEmpScreen extends StatefulWidget {
   const PhoneVerificationEmpScreen({super.key});
@@ -11,7 +13,7 @@ class PhoneVerificationEmpScreen extends StatefulWidget {
 
 class _PhoneVerificationEmpScreenState extends State<PhoneVerificationEmpScreen> {
   final TextEditingController _phoneController = TextEditingController();
-  String countryCode = '+57';
+  String countryCode = '%2B57';
 
   @override
   Widget build(BuildContext context) {
@@ -64,15 +66,15 @@ class _PhoneVerificationEmpScreenState extends State<PhoneVerificationEmpScreen>
                         value: countryCode,
                         items: const [
                           DropdownMenuItem(
-                            value: '+57',
+                            value: '%2B57',
                             child: Text('+57', style: TextStyle(color: Colors.white)),
                           ),
                           DropdownMenuItem(
-                            value: '+1',
+                            value: '%2B1',
                             child: Text('+1', style: TextStyle(color: Colors.white)),
                           ),
                           DropdownMenuItem(
-                            value: '+52',
+                            value: '%2B52',
                             child: Text('+52', style: TextStyle(color: Colors.white)),
                           ),
                         ],
@@ -120,9 +122,20 @@ class _PhoneVerificationEmpScreenState extends State<PhoneVerificationEmpScreen>
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {
-                    // Aquí luego conectamos con el backend (enviar código)
-                    Navigator.pushNamed(context, RouteNames.phone_code_emp);
+                  onPressed: () async {
+                    final numero = '${countryCode}${_phoneController.text.trim()}';
+                    final preRegistro = context.read<PreRegistroProvider>();
+                    final ok = await preRegistro.enviarCodigo(numero);
+                    if(ok){
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Código enviado correctamente')),
+                      );
+                      Navigator.pushNamed(context, RouteNames.phone_code_emp, arguments: {'countryCode': countryCode, 'phoneNumber': _phoneController.text.trim()},);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(preRegistro.errorMessage ?? 'Error al enviar el código'), backgroundColor: Colors.red,),
+                      );
+                    }
                   },
                   child: const Text(
                     'Continuar',

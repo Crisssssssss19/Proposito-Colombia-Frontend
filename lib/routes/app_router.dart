@@ -40,10 +40,12 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const SelectUserTypeScreen());
       
       case RouteNames.registerCandidato:
-        return MaterialPageRoute(builder: (_) => const RegisterCandidatoScreen());
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => RegisterCandidatoScreen(phoneNumber: args['phoneNumber'],));
 
       case RouteNames.registerEmpresa:
-        return MaterialPageRoute(builder: (_) => const RegisterEmpresaScreen());
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => RegisterEmpresaScreen(phoneNumber: args['phoneNumber'],));
 
       case RouteNames.phone_verification_can:
         return MaterialPageRoute(builder: (_) => const PhoneVerificationCanScreen());
@@ -52,10 +54,12 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const PhoneVerificationEmpScreen());
 
       case RouteNames.phone_code_emp:
-        return MaterialPageRoute(builder: (_) => const PhoneCodeEmpScreen());
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => PhoneCodeEmpScreen(phoneNumber: args['phoneNumber'], countryCode: args['countryCode'],));
 
       case RouteNames.phone_code_can:
-        return MaterialPageRoute(builder: (_) => const PhoneCodeCanScreen());
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => PhoneCodeCanScreen(phoneNumber: args['phoneNumber'], countryCode: args['countryCode'],));
       
       case '/welcome-register':
         final args = settings.arguments as Map<String, dynamic>;

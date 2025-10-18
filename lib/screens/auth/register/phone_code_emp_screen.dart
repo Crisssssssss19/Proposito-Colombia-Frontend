@@ -4,7 +4,10 @@ import 'package:swallow_app/routes/route_names.dart';
 import 'package:swallow_app/widgets/misc/golondrina.dart';
 
 class PhoneCodeEmpScreen extends StatefulWidget {
-  const PhoneCodeEmpScreen({super.key});
+  final String countryCode;
+  final String phoneNumber;
+
+  const PhoneCodeEmpScreen({super.key, required this.countryCode, required this.phoneNumber});
 
   @override
   State<PhoneCodeEmpScreen> createState() => _PhoneCodeEmpScreenState();
@@ -57,7 +60,7 @@ class _PhoneCodeEmpScreenState extends State<PhoneCodeEmpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Código verificado correctamente ✅')),
       );
-      Navigator.pushNamed(context, RouteNames.registerEmpresa);
+      Navigator.pushNamed(context, RouteNames.registerEmpresa, arguments: {'phoneNumber': '${widget.countryCode}${widget.phoneNumber}'},);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor ingresa los 6 dígitos')),
