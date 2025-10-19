@@ -8,6 +8,7 @@ class RouteNames {
   static const String postulacionesCandidato = '/postulaciones-candidato';
   static const String matchesCandidato = '/matches-candidato';
   static const String explorarCandidato = '/explorar-candidato';
+  static const String PerfilCandidato = '/perfil-candidato';
 
   // Empresa
   static const String homeEmpresa = '/home-empresa';

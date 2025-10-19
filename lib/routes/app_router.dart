@@ -9,6 +9,7 @@ import '../screens/auth/select_user_type_screen.dart';
 
 import '../widgets/navigation/bottom_tab_navigator.dart';
 import '../widgets/navigation/empresa_bottom_navigator.dart';
+import '../screens/candidato/perfil/perfilScreen.dart';
 
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -36,6 +37,9 @@ class AppRouter {
 
       case RouteNames.explorarCandidato:
         return MaterialPageRoute(builder: (_) => const ExplorarCandidatoScreen());
+
+      case RouteNames.PerfilCandidato:
+        return MaterialPageRoute(builder: (_) => const PerfilScreen());
 
     // Rutas Empresa
       case RouteNames.homeEmpresa:

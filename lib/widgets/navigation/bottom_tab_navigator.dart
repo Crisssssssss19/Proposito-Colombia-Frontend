@@ -4,6 +4,7 @@ import '../../screens/candidato/explorar/explorar_screen.dart';
 import '../../screens/candidato/matches/matches_screen.dart';
 import '../../screens/candidato/postulaciones/postulaciones_screen.dart';
 import '../../screens/candidato/vacantes/vacantes_screen.dart';
+import '../../screens/candidato/perfil/perfilScreen.dart';
 
 
 class BottomTabNavigator extends StatefulWidget {
@@ -20,8 +21,8 @@ class _BottomTabNavigatorState extends State<BottomTabNavigator> {
     VacantesScreen(),
     PostulacionesCandidatoScreen(),
     MatchesCandidatoScreen(),
-    ExplorarCandidatoScreen(),
-    VacantesScreen(), // Placeholder para Perfil
+    ExplorarCandidatoScreen(), 
+    PerfilScreen()
   ];
 
   @override

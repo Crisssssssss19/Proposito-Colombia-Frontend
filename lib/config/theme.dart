@@ -99,8 +99,16 @@ class AppTheme {
     );
   }
 
+static const Color _success = Color(0xFF4CAF50);
+
   // Colores personalizados accesibles
   static const Color accentYellow = _accentYellow;
   static const Color accentCoral = _accentCoral;
   static const Color accentCoralDark = _accentCoralDark;
+  static const Color success = _success;
+  static const Color lightPrimary = _lightPrimary;
+  static const Color lightTextPrimary = _lightTextPrimary;
+  static const Color lightTextSecondary = _lightTextSecondary;
+  static const Color lightSecondary = _lightSecondary;
+  static const Color lightBackgroundSecondary = _lightBackgroundSecondary;
 }
