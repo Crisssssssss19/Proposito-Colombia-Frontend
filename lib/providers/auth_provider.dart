@@ -1,100 +1,120 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
+import 'dart:convert';
 import '../services/auth_service.dart';
+import 'dart:math';
 import '../services/storage_service.dart';
-
-enum AuthStatus { initial, authenticated, unauthenticated, loading }
-enum UserType { candidate, company }
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
 
-  AuthStatus _status = AuthStatus.initial;
-  User? _currentUser;
-  UserType? _userType;
   String? _token;
+  String? _userRole;
   String? _errorMessage;
+  bool _isLoading = false;
 
-  AuthStatus get status => _status;
-  User? get currentUser => _currentUser;
-  UserType? get userType => _userType;
   String? get token => _token;
+  String? get userRole => _userRole;
   String? get errorMessage => _errorMessage;
-  bool get isAuthenticated => _status == AuthStatus.authenticated;
-  bool get isCandidate => _userType == UserType.candidate;
-  bool get isCompany => _userType == UserType.company;
+  bool get isLoading => _isLoading;
 
-  Future<void> initialize() async {
-    _status = AuthStatus.loading;
-    notifyListeners();
+  bool get isAuthenticated => _token != null && _token!.isNotEmpty;
 
-    try {
-      _token = await _storageService.getToken();
-      final userTypeStr = await _storageService.getUserType();
-
-      if (_token != null && userTypeStr != null) {
-        _userType = userTypeStr == 'candidate'
-            ? UserType.candidate
-            : UserType.company;
-        // Aquí podrías cargar los datos del usuario desde la API
-        _status = AuthStatus.authenticated;
-      } else {
-        _status = AuthStatus.unauthenticated;
-      }
-    } catch (e) {
-      _status = AuthStatus.unauthenticated;
-      _errorMessage = 'Error al inicializar sesión';
-    }
-
-    notifyListeners();
-  }
-
-  Future<bool> login(String email, String password) async {
-    _status = AuthStatus.loading;
+  // LOGIN
+  Future<bool> login({
+    required String correoAcceso,
+    required String claveAcceso,
+  }) async {
+    _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final response = await _authService.login(email, password);
+      final response = await _authService.login(correoAcceso, claveAcceso);
+      _token = response['token'];
+      if(_token == null) {
+        throw Exception('Token inválido recibido del servidor');
+      }
+      // Decodificar el token JWT para obtener el rol del usuario
+      final parts = _token!.split('.');
+      if (parts.length != 3) {
+        throw Exception('Token JWT inválido');
+      }
+      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final Map<String, dynamic> decoded = jsonDecode(payload);
 
-      _token = response['token'] as String;
-      _userType = response['userType'] == 'candidate'
-          ? UserType.candidate
-          : UserType.company;
+      final List<dynamic>? roles = decoded['roles'];
+      _userRole = roles != null && roles.isNotEmpty ? roles.first : 'ASPIRANTE';
 
+      // Guardar en almacenamiento local
       await _storageService.saveToken(_token!);
-      await _storageService.saveUserType(
-          _userType == UserType.candidate ? 'candidate' : 'company'
-      );
+      await _storageService.saveUserType(_userRole!);
 
-      _status = AuthStatus.authenticated;
+      _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _status = AuthStatus.unauthenticated;
+      _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
       return false;
     }
   }
 
-  Future<void> logout() async {
-    _status = AuthStatus.loading;
+  // REGISTRO
+
+  String _randomValue() => "XXX_${Random().nextInt(9999999)}";
+  Future<bool> register({
+    required String nombres,
+    required String apellidos,
+    required String correoAcceso,
+    required String claveAcceso,
+    required String telefono,
+    required bool isEmpresa,
+  }) async {
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
+
+  try {
+    final body = {
+      "nombresUsuario": nombres,
+      "apellidosUsuario": apellidos.isEmpty ? "XXX_${_randomValue()}" : apellidos,
+      "tipoDocumentoUsuario": 1,
+      "documentoUsuario": _randomValue(),
+      "idUbicacion": 101, // de ejemplo
+      "estadoUsuario": 1,
+      "telefonoUsuario": telefono.replaceAll(' ', ''),
+      "correoAcceso": correoAcceso,
+      "claveAcceso": claveAcceso,
+      "roles": [isEmpresa ? 'Empresa' : 'Aspirante']
+    };
+
+    final response = await _authService.register(body);
+    if (response['codigoEstado'] == 201) {
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } else {
+      _errorMessage = response['mensaje'] ?? 'Error en el registro';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  } catch (e) {
+    _isLoading = false;
+    _errorMessage = e.toString();
     notifyListeners();
-
-    await _storageService.clearAll();
-
-    _currentUser = null;
-    _token = null;
-    _userType = null;
-    _status = AuthStatus.unauthenticated;
-
-    notifyListeners();
+    return false;
   }
+}
 
-  void clearError() {
-    _errorMessage = null;
+
+  // LOGOUT
+  Future<void> logout() async {
+    _token = null;
+    _userRole = null;
+    await _storageService.clearAll();
     notifyListeners();
   }
 }
