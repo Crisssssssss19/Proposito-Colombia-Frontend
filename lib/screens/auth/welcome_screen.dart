@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
-import '../../routes/route_names.dart';
+import '../../../config/theme.dart';
+import '../../../routes/route_names.dart';
 
-class SelectUserTypeScreen extends StatelessWidget {
-  const SelectUserTypeScreen({super.key});
+class WelcomeScreen extends StatelessWidget {
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -44,30 +44,30 @@ class SelectUserTypeScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // Botón Candidato
+              // Botón Iniciar sesión
               _UserTypeCard(
                 icon: Icons.person,
-                title: 'Soy Candidato',
-                subtitle: 'Busco empleo',
+                title: 'Iniciar sesión',
+                subtitle: '¿Ya tienes una cuenta?',
                 color: theme.colorScheme.primary,
                 onTap: () {
                   Navigator.of(context).pushReplacementNamed(
-                    RouteNames.homeCandidato,
+                    RouteNames.login,
                   );
                 },
               ),
 
               const SizedBox(height: 16),
 
-              // Botón Empresa
+              // Botón registrarse
               _UserTypeCard(
                 icon: Icons.business,
-                title: 'Soy Empresa',
-                subtitle: 'Busco candidatos',
+                title: 'Registrarse',
+                subtitle: '¿Eres nuevo aquí?',
                 color: AppTheme.accentYellow,
                 onTap: () {
                   Navigator.of(context).pushReplacementNamed(
-                    RouteNames.homeEmpresa,
+                    RouteNames.selectUserType,
                   );
                 },
               ),
