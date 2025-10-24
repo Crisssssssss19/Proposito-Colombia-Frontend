@@ -48,6 +48,7 @@ class AuthProvider extends ChangeNotifier {
 
       // Guardar en almacenamiento local
       await _storageService.saveToken(_token!);
+      await decodeAndSaveUserId(_token!);
       await _storageService.saveUserType(_userRole!);
 
       _isLoading = false;
@@ -117,4 +118,30 @@ class AuthProvider extends ChangeNotifier {
     await _storageService.clearAll();
     notifyListeners();
   }
+
+  // DECODIFICAR Y GUARDAR EL ID DE USUARIO DESDE EL TOKEN JWT
+Future<void> decodeAndSaveUserId(String token) async {
+  try {
+    final parts = token.split('.');
+    if (parts.length != 3) {
+      throw Exception('Token JWT inválido');
+    }
+
+    final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+    final Map<String, dynamic> decoded = jsonDecode(payload);
+
+    // 🔹 Ajusta según el nombre del campo que tu backend usa para el ID
+    final int? userId = decoded['id'] ?? decoded['idUsuario'] ?? decoded['sub'];
+
+    if (userId != null) {
+      await _storageService.saveUserId(userId);
+      print('✅ ID de usuario guardado localmente: $userId');
+    } else {
+      print('⚠️ No se encontró el ID de usuario en el token.');
+    }
+  } catch (e) {
+    print('❌ Error al decodificar ID del token: $e');
+  }
+}
+
 }

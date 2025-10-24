@@ -8,6 +8,7 @@ import 'providers/candidate_provider.dart';
 import 'providers/application_provider.dart';
 import 'routes/app_router.dart';
 import 'routes/route_names.dart';
+import 'providers/perfil_provider.dart';
 
 void main() {
   runApp(const SwallowApp());
@@ -26,6 +27,7 @@ class SwallowApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => VacancyProvider()),
         ChangeNotifierProvider(create: (_) => CandidateProvider()),
         ChangeNotifierProvider(create: (_) => ApplicationProvider()),
+        ChangeNotifierProvider(create: (_) => PerfilProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

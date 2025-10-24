@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:swallow_app/config/theme.dart';
 import 'package:swallow_app/screens/candidato/perfil/configuracion_general_screen.dart';
-import '/../config/theme.dart';
-import '/../screens/candidato/perfil/datos_basicos_screen.dart';
-import '/../screens/candidato/perfil/correo_electronico_screen.dart';
-import '/../screens/candidato/perfil/telefono_screen.dart';
-import '/../screens/candidato/perfil/MiCVScreen.dart';
-import '/../screens/candidato/perfil/habilidades_competencias_screen.dart';
-import '/../screens/candidato/perfil/portafolioScreen.dart';
+import 'package:swallow_app/screens/candidato/perfil/datos_basicos_screen.dart';
+import 'package:swallow_app/screens/candidato/perfil/correo_electronico_screen.dart';
+import 'package:swallow_app/screens/candidato/perfil/telefono_screen.dart';
+import 'package:swallow_app/screens/candidato/perfil/MiCVScreen.dart';
+import 'package:swallow_app/screens/candidato/perfil/habilidades_competencias_screen.dart';
+import 'package:swallow_app/screens/candidato/perfil/portafolioScreen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:swallow_app/services/storage_service.dart';
+
 
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
@@ -17,19 +22,6 @@ class PerfilScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      /* appBar: AppBar(
-        title: const Text(
-          'Perfil',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ), */
-      // 👇 Navigator interno para manejar las rutas dentro de Perfil
       body: Navigator(
         key: perfilNavigatorKey,
         onGenerateRoute: (settings) {
@@ -42,11 +34,76 @@ class PerfilScreen extends StatelessWidget {
   }
 }
 
-class PerfilMainContent extends StatelessWidget {
+class PerfilMainContent extends StatefulWidget {
   const PerfilMainContent({super.key});
 
   @override
+  State<PerfilMainContent> createState() => _PerfilMainContentState();
+}
+
+class _PerfilMainContentState extends State<PerfilMainContent> {
+  Map<String, dynamic>? perfilData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPerfilData();
+  }
+
+Future<void> _fetchPerfilData() async {
+  try {
+    final storage = StorageService();
+
+    // 🔹 Obtén el token y el ID guardados al iniciar sesión
+    final token = await storage.getToken();
+    final userId = await storage.getUserId();
+
+    if (token == null || userId == null) {
+      throw Exception('Token o ID de usuario no disponibles');
+    }
+
+    // 🔹 Llama al backend con el token
+    final response = await http.get(
+      Uri.parse('http://localhost:3210/perfil/$userId/completo'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      setState(() {
+        perfilData = decoded['data'];
+        isLoading = false;
+      });
+    } else {
+      throw Exception('Error al obtener perfil (${response.statusCode})');
+    }
+  } catch (e) {
+    print('❌ Error cargando perfil: $e');
+    setState(() => isLoading = false);
+  }
+}
+
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (perfilData == null) {
+      return const Center(
+        child: Text('No se pudo cargar la información del perfil.'),
+      );
+    }
+
+    final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
+    final ubicacion = perfilData!['ubicacion'] ?? 'Ubicación no disponible';
+    final palabrasClave = (perfilData!['palabrasClave'] as List?)?.map((e) => e['nombre']).toList() ?? [];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -63,6 +120,7 @@ class PerfilMainContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+
           // 🔷 CUADRO PRINCIPAL
           Container(
             padding: const EdgeInsets.all(16),
@@ -116,22 +174,22 @@ class PerfilMainContent extends StatelessWidget {
                     const SizedBox(width: 15),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          'Ana María González',
-                          style: TextStyle(
+                          nombre,
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                             color: Colors.black,
                           ),
                         ),
-                        Text(
-                          'Desarrolladora Frontend',
+                        const Text(
+                          'Desarrolladora Frontend', // Temporal
                           style: TextStyle(color: Colors.grey),
                         ),
                         Text(
-                          'Bogotá, Colombia',
-                          style: TextStyle(color: Colors.grey),
+                          ubicacion,
+                          style: const TextStyle(color: Colors.grey),
                         ),
                       ],
                     ),
@@ -154,7 +212,7 @@ class PerfilMainContent extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.grey),
                       onPressed: () {
-                        _showEditKeywordsDialog(context);
+                        _showEditKeywordsDialog(context, palabrasClave);
                       },
                     ),
                   ],
@@ -166,15 +224,9 @@ class PerfilMainContent extends StatelessWidget {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: const [
-                    Chip(label: Text('HTML5')),
-                    Chip(label: Text('CSS3')),
-                    Chip(label: Text('JavaScript (ES6+)')),
-                    Chip(label: Text('TypeScript')),
-                    Chip(label: Text('React')),
-                    Chip(label: Text('Responsive Design')),
-                    Chip(label: Text('SEO On-Page')),
-                  ],
+                  children: palabrasClave.isNotEmpty
+                      ? palabrasClave.map((e) => Chip(label: Text(e))).toList()
+                      : [const Text('Sin palabras clave')],
                 ),
               ],
             ),
@@ -198,30 +250,31 @@ class PerfilMainContent extends StatelessWidget {
 
   Widget _buildProfileOption(String title, BuildContext context) {
     void _navigateTo(Widget screen) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final navigator = PerfilScreen.perfilNavigatorKey.currentState;
-      (navigator ?? Navigator.of(context)).push(
-        MaterialPageRoute(builder: (_) => screen),
-      );
-    });
-  }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final navigator = PerfilScreen.perfilNavigatorKey.currentState;
+        (navigator ?? Navigator.of(context)).push(
+          MaterialPageRoute(builder: (_) => screen),
+        );
+      });
+    }
+
     return InkWell(
       onTap: () {
-      if (title == 'Datos básicos') {
-        _navigateTo(const DatosBasicosScreen());
-      } else if (title == 'Correo electrónico') {
-        _navigateTo(const CorreoElectronicoScreen());
-      } else if (title == 'Número de teléfono') { 
-        _navigateTo(const TelefonoScreen());
-      } else if (title == 'Mi CV'){
-        _navigateTo(const MiCVScreen());
-      } else if (title == 'Competencia y habilidades'){
-        _navigateTo(const CompetenciasScreen());
-      } else if (title == 'Portafolio'){
-        _navigateTo(const PortafolioScreen());
-      } else if (title == 'Configuración general'){
-        _navigateTo(const ConfiguracionGeneralScreen());
-      }
+        if (title == 'Datos básicos') {
+          _navigateTo(const DatosBasicosScreen());
+        } else if (title == 'Correo electrónico') {
+          _navigateTo(const CorreoElectronicoScreen());
+        } else if (title == 'Número de teléfono') {
+          _navigateTo(const TelefonoScreen());
+        } else if (title == 'Mi CV') {
+          _navigateTo(const MiCVScreen());
+        } else if (title == 'Competencia y habilidades') {
+          _navigateTo(const CompetenciasScreen());
+        } else if (title == 'Portafolio') {
+          _navigateTo(const PortafolioScreen());
+        } else if (title == 'Configuración general') {
+          _navigateTo(const ConfiguracionGeneralScreen());
+        }
       },
       child: Container(
         width: double.infinity,
@@ -243,19 +296,9 @@ class PerfilMainContent extends StatelessWidget {
     );
   }
 
-  void _showEditKeywordsDialog(BuildContext context) {
+  void _showEditKeywordsDialog(BuildContext context, List<dynamic> currentKeywords) {
     final TextEditingController keywordController = TextEditingController();
-    final List<String> keywords = [
-      'HTML5',
-      'CSS3',
-      'JavaScript (ES6+)',
-      'TypeScript',
-      'React',
-      'Responsive Design',
-      'Web Accessibility (A11Y)',
-      'SEO On-Page',
-      'DOM Manipulation',
-    ];
+    final List<String> keywords = List<String>.from(currentKeywords);
 
     showDialog(
       context: context,
@@ -307,26 +350,21 @@ class PerfilMainContent extends StatelessWidget {
                             style: const TextStyle(color: Colors.black),
                             decoration: InputDecoration(
                               hintText: 'Ej: Node.js',
-                              hintStyle: TextStyle(
-                                  color: AppTheme.lightTextSecondary),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                              hintStyle: TextStyle(color: AppTheme.lightTextSecondary),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(color: AppTheme.lightPrimary),
+                                borderSide: BorderSide(color: AppTheme.lightPrimary),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: Icon(Icons.add_circle,
-                              color: AppTheme.lightPrimary, size: 32),
+                          icon: Icon(Icons.add_circle, color: AppTheme.lightPrimary, size: 32),
                           onPressed: () {
                             final newKeyword = keywordController.text.trim();
-                            if (newKeyword.isNotEmpty &&
-                                !keywords.contains(newKeyword)) {
+                            if (newKeyword.isNotEmpty && !keywords.contains(newKeyword)) {
                               setState(() {
                                 keywords.add(newKeyword);
                               });
@@ -368,8 +406,7 @@ class PerfilMainContent extends StatelessWidget {
                                 keywords.remove(word);
                               });
                             },
-                            backgroundColor:
-                                AppTheme.lightSecondary.withOpacity(0.2),
+                            backgroundColor: AppTheme.lightSecondary.withOpacity(0.2),
                           );
                         }).toList(),
                       ),
