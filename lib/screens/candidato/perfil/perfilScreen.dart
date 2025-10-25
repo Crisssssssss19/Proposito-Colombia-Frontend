@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:swallow_app/config/theme.dart';
 import 'package:swallow_app/screens/candidato/perfil/configuracion_general_screen.dart';
 import 'package:swallow_app/screens/candidato/perfil/datos_basicos_screen.dart';
@@ -103,23 +102,28 @@ Future<void> _fetchPerfilData() async {
     final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
     final ubicacion = perfilData!['ubicacion'] ?? 'Ubicación no disponible';
     final palabrasClave = (perfilData!['palabrasClave'] as List?)?.map((e) => e['nombre']).toList() ?? [];
+    final habilidadPrincipal = perfilData!['HabilidadPrincipal'] ?? 'Sin habilidad principal';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Center(
-            child: Text(
-              'Perfil',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+    return RefreshIndicator(
+      onRefresh: _fetchPerfilData,
+      color: AppTheme.lightPrimary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(), 
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Center(
+              child: Text(
+                'Perfil',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
           // 🔷 CUADRO PRINCIPAL
           Container(
@@ -183,8 +187,8 @@ Future<void> _fetchPerfilData() async {
                             color: Colors.black,
                           ),
                         ),
-                        const Text(
-                          'Desarrolladora Frontend', // Temporal
+                        Text(
+                          habilidadPrincipal,
                           style: TextStyle(color: Colors.grey),
                         ),
                         Text(
@@ -245,16 +249,22 @@ Future<void> _fetchPerfilData() async {
           _buildProfileOption('Cerrar sesión', context),
         ],
       ),
+    ),
     );
   }
 
   Widget _buildProfileOption(String title, BuildContext context) {
-    void _navigateTo(Widget screen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    void _navigateTo(Widget screen) async{
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         final navigator = PerfilScreen.perfilNavigatorKey.currentState;
-        (navigator ?? Navigator.of(context)).push(
+
+        await (navigator ?? Navigator.of(context)).push(
           MaterialPageRoute(builder: (_) => screen),
         );
+
+        if (title == 'Datos básicos' || title == 'Competencia y habilidades' ) {
+          _fetchPerfilData();
+        }
       });
     }
 
