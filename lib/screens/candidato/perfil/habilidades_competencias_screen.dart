@@ -64,6 +64,24 @@ Future<void> _agregarTalento(String nombre, int nivelDominio, int tipo) async {
       throw Exception('Token o ID de usuario no disponibles');
     }
 
+        final talentoExiste = talentos.any((t) => 
+      t['nombreTalento']?.toString().toLowerCase() == nombre.toLowerCase() &&
+      t['tipo'] == tipo
+    );
+
+    if (talentoExiste){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ya tienes ${tipo == 1 ? "la habilidad" : "la competencia"} "$nombre" registrada',
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     int? idTalento;
 
     // Buscar si el talento ya existe
@@ -219,139 +237,169 @@ Future<void> _agregarTalento(String nombre, int nivelDominio, int tipo) async {
     }
   }
 
-  void _mostrarDialogoAgregar() {
-    final TextEditingController nombreController = TextEditingController();
-    int nivelSeleccionado = 1; // 1=Básico, 2=Intermedio, 3=Avanzado
-    int tipoSeleccionado = 1; // 1=Habilidad, 2=Competencia
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              backgroundColor: Colors.white,
-              title: const Text(
-                'Agregar Habilidad o Competencia',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-                textAlign: TextAlign.center,
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Selector de tipo
-                    DropdownButtonFormField<int>(
-                      value: tipoSeleccionado,
-                      decoration: InputDecoration(
-                        labelText: 'Tipo',
-                        labelStyle: const TextStyle(color: Colors.grey),                      
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: AppTheme.lightPrimary),
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 1,
-                          child: Row(
-                            children: [
-                              Icon(Icons.code, color: Colors.blue, size: 20),
-                              SizedBox(width: 8),
-                              Text('Habilidad', style: TextStyle(color: Colors.black)),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 2,
-                          child: Row(
-                            children: [
-                              Icon(Icons.people, color: Colors.purple, size: 20),
-                              SizedBox(width: 8),
-                              Text('Competencia', style: TextStyle(color: Colors.black)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          tipoSeleccionado = value!;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Campo de nombre con hint dinámico
-                    TextField(
-                      controller: nombreController,
-                      style: const TextStyle(color: Colors.black),
-                      decoration: InputDecoration(
-                        labelText: 'Nombre',
-                        hintText: tipoSeleccionado == 1 
-                            ? 'Ej: React, Python, Java'
-                            : 'Ej: Liderazgo, Comunicación',
-                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-                        labelStyle: const TextStyle(color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: AppTheme.lightPrimary),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Selector de nivel con valores numéricos
-                    DropdownButtonFormField<int>(
-                      value: nivelSeleccionado,
-                      decoration: InputDecoration(
-                        labelText: 'Nivel de dominio',
-                        labelStyle: const TextStyle(color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: AppTheme.lightPrimary),
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 1, child: Text('Básico', style: TextStyle(color: Colors.black))),
-                        DropdownMenuItem(value: 2, child: Text('Intermedio', style: TextStyle(color: Colors.black))),
-                        DropdownMenuItem(value: 3, child: Text('Avanzado', style: TextStyle(color: Colors.black))),
-                      ],
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          nivelSeleccionado = value!;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.lightPrimary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () {
-                    final nombre = nombreController.text.trim();
-                    if (nombre.isNotEmpty) {
-                      Navigator.pop(context);
-                      _agregarTalento(nombre, nivelSeleccionado, tipoSeleccionado);
-                    }
-                  },
-                  child: const Text('Agregar', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+String _formatearNombreTalento(String nombre) {
+  if (nombre.isEmpty) return nombre;
+  
+  // Lista de acrónimos comunes que deben estar en mayúsculas
+  final acronimos = {
+    'html', 'css', 'js', 'xml', 'json', 'api', 'rest', 'sql', 
+    'nosql', 'aws', 'gcp', 'ios', 'ui', 'ux', 'seo', 'npm',
+    'http', 'https', 'php', 'asp', 'mvc', 'sass', 'scss'
+  };
+  
+  final nombreLower = nombre.toLowerCase().trim();
+  
+  // Si es un acrónimo conocido, devolver en mayúsculas
+  if (acronimos.contains(nombreLower)) {
+    return nombreLower.toUpperCase();
   }
+  
+  // Si contiene puntos (ej: Node.js, React.js), capitalizar cada parte
+  if (nombre.contains('.')) {
+    return nombre.split('.').map((part) {
+      if (part.isEmpty) return part;
+      return part[0].toUpperCase() + part.substring(1).toLowerCase();
+    }).join('.');
+  }
+  
+  // Capitalizar primera letra normalmente
+  return nombre[0].toUpperCase() + nombre.substring(1).toLowerCase();
+}
+
+void _mostrarDialogoAgregar() {
+  final TextEditingController nombreController = TextEditingController();
+  int nivelSeleccionado = 1;
+  int tipoSeleccionado = 1;
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: Colors.white,
+            title: const Text(
+              'Agregar Habilidad o Competencia',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+              textAlign: TextAlign.center,
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    value: tipoSeleccionado,
+                    decoration: InputDecoration(
+                      labelText: 'Tipo',
+                      labelStyle: const TextStyle(color: Colors.grey),                      
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: AppTheme.lightPrimary),
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 1,
+                        child: Row(
+                          children: [
+                            Icon(Icons.code, color: Colors.blue, size: 20),
+                            SizedBox(width: 8),
+                            Text('Habilidad', style: TextStyle(color: Colors.black)),
+                          ],
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 2,
+                        child: Row(
+                          children: [
+                            Icon(Icons.people, color: Colors.purple, size: 20),
+                            SizedBox(width: 8),
+                            Text('Competencia', style: TextStyle(color: Colors.black)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        tipoSeleccionado = value!;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: nombreController,
+                    style: const TextStyle(color: Colors.black),
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre',
+                      hintText: tipoSeleccionado == 1 
+                          ? 'Ej: React, Python, HTML'
+                          : 'Ej: Liderazgo, Comunicación',
+                      hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: AppTheme.lightPrimary),
+                      ),
+                      helperText: 'Usa mayúsculas para acrónimos (HTML, CSS, API)',
+                      helperStyle: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  DropdownButtonFormField<int>(
+                    value: nivelSeleccionado,
+                    decoration: InputDecoration(
+                      labelText: 'Nivel de dominio',
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: AppTheme.lightPrimary),
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 1, child: Text('Básico', style: TextStyle(color: Colors.black))),
+                      DropdownMenuItem(value: 2, child: Text('Intermedio', style: TextStyle(color: Colors.black))),
+                      DropdownMenuItem(value: 3, child: Text('Avanzado', style: TextStyle(color: Colors.black))),
+                    ],
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        nivelSeleccionado = value!;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.lightPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () {
+                  String nombre = nombreController.text.trim();
+                  if (nombre.isNotEmpty) {
+                    nombre = _formatearNombreTalento(nombre);
+                    Navigator.pop(context);
+                    _agregarTalento(nombre, nivelSeleccionado, tipoSeleccionado);
+                  }
+                },
+                child: const Text('Agregar', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 
   void _mostrarDialogoEditar(Map<String, dynamic> talento) {
     int nivelSeleccionado = talento['nivelDominio'] ?? 1; 
