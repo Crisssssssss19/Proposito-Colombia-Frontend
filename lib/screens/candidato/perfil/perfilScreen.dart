@@ -50,11 +50,31 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
     _fetchPerfilData();
   }
 
+  String _capitalize(String text) {
+  if (text.isEmpty) return text;
+  return text[0].toUpperCase() + text.substring(1);
+}
+
+String _formatKeyword(String text) {
+  final siglas = {
+    'html', 'css', 'sql', 'api', 'ui', 'ux', 'rest', 'oop',
+    'js', 'c#', 'c++'
+  };
+
+  final lower = text.toLowerCase();
+
+  if (siglas.contains(lower)) {
+    return lower.toUpperCase(); 
+  }
+
+  return _capitalize(lower);
+}
+
 Future<void> _fetchPerfilData() async {
   try {
     final storage = StorageService();
 
-    // 🔹 Obtén el token y el ID guardados al iniciar sesión
+    // Obtén el token y el ID guardados al iniciar sesión
     final token = await storage.getToken();
     final userId = await storage.getUserId();
 
@@ -62,7 +82,7 @@ Future<void> _fetchPerfilData() async {
       throw Exception('Token o ID de usuario no disponibles');
     }
 
-    // 🔹 Llama al backend con el token
+    // Llama al backend con el token
     final response = await http.get(
       Uri.parse('http://localhost:3210/perfil/$userId/completo'),
       headers: {
@@ -81,7 +101,7 @@ Future<void> _fetchPerfilData() async {
       throw Exception('Error al obtener perfil (${response.statusCode})');
     }
   } catch (e) {
-    print('❌ Error cargando perfil: $e');
+    print(' Error cargando perfil: $e');
     setState(() => isLoading = false);
   }
 }
@@ -101,7 +121,11 @@ Future<void> _fetchPerfilData() async {
 
     final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
     final ubicacion = perfilData!['ubicacion'] ?? 'Ubicación no disponible';
-    final palabrasClave = (perfilData!['palabrasClave'] as List?)?.map((e) => e['nombre']).toList() ?? [];
+    final palabrasClave = (perfilData!['palabrasClave'] as List?)
+        ?.where((e) => e != null && e['textoPalabraClave'] != null)
+        .map((e) => _formatKeyword(e['textoPalabraClave'] as String))
+        .toList()
+    ?? [];
     final habilidadPrincipal = perfilData!['HabilidadPrincipal'] ?? 'Sin habilidad principal';
 
     return RefreshIndicator(
@@ -125,7 +149,7 @@ Future<void> _fetchPerfilData() async {
             ),
             const SizedBox(height: 20),
 
-          // 🔷 CUADRO PRINCIPAL
+          // CUADRO PRINCIPAL
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -238,7 +262,7 @@ Future<void> _fetchPerfilData() async {
 
           const SizedBox(height: 25),
 
-          // 🔹 OPCIONES DE PERFIL ABAJO
+          // OPCIONES DE PERFIL ABAJO
           _buildProfileOption('Datos básicos', context),
           _buildProfileOption('Correo electrónico', context),
           _buildProfileOption('Número de teléfono', context),
@@ -308,7 +332,7 @@ Future<void> _fetchPerfilData() async {
 
   void _showEditKeywordsDialog(BuildContext context, List<dynamic> currentKeywords) {
     final TextEditingController keywordController = TextEditingController();
-    final List<String> keywords = List<String>.from(currentKeywords);
+    final List<String> keywords = currentKeywords.map((e) => e.toString()).toList();
 
     showDialog(
       context: context,
@@ -358,8 +382,9 @@ Future<void> _fetchPerfilData() async {
                           child: TextField(
                             controller: keywordController,
                             style: const TextStyle(color: Colors.black),
+                            textCapitalization: TextCapitalization.words,
                             decoration: InputDecoration(
-                              hintText: 'Ej: Node.js',
+                              hintText: 'Ej: Node.js, HTML, React',
                               hintStyle: TextStyle(color: AppTheme.lightTextSecondary),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               border: OutlineInputBorder(
@@ -374,11 +399,22 @@ Future<void> _fetchPerfilData() async {
                           icon: Icon(Icons.add_circle, color: AppTheme.lightPrimary, size: 32),
                           onPressed: () {
                             final newKeyword = keywordController.text.trim();
-                            if (newKeyword.isNotEmpty && !keywords.contains(newKeyword)) {
-                              setState(() {
-                                keywords.add(newKeyword);
-                              });
-                              keywordController.clear();
+                            if (newKeyword.isNotEmpty) {
+                              final formatted = _formatKeyword(newKeyword);
+                              if (!keywords.contains(formatted)) {
+                                setState(() {
+                                  keywords.add(formatted);
+                                });
+                                keywordController.clear();
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('La palabra clave ya existe.'),
+                                    duration: Duration(seconds: 2),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
                             }
                           },
                         ),
@@ -404,50 +440,150 @@ Future<void> _fetchPerfilData() async {
                         border: Border.all(color: AppTheme.lightPrimary),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: keywords.map((word) {
-                          return Chip(
-                            label: Text(word),
-                            deleteIcon: const Icon(Icons.close, size: 18),
-                            onDeleted: () {
-                              setState(() {
-                                keywords.remove(word);
-                              });
-                            },
-                            backgroundColor: AppTheme.lightSecondary.withOpacity(0.2),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
+                        child: keywords.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text(
+                              'No hay palabras clave\n(Se eliminarán todas al guardar)',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey, fontSize: 13),
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: keywords.map((word) {
+                              return Chip(
+                                label: Text(word),
+                                deleteIcon: const Icon(Icons.close, size: 18),
+                                onDeleted: () {
+                                  setState(() {
+                                    keywords.remove(word);
+                                  });
+                                },
+                                backgroundColor: AppTheme.lightSecondary.withOpacity(0.2),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ],
               ),
-              actions: [
-                Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.lightPrimary,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                      'Guardar y cerrar',
-                      style: TextStyle(color: Colors.white),
+            ),
+            actions: [
+              Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.lightPrimary,
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
+                  onPressed: () async {
+                    if (keywords.isEmpty && currentKeywords.isNotEmpty) {
+                      final confirmar = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Confirmar'),
+                          content: const Text(
+                            '¿Estás seguro de eliminar todas las palabras clave?'
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text(
+                                'Eliminar todas',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                      
+                      if (confirmar != true) return;
+                    }
+
+                    Navigator.pop(context);
+                    await _guardarPalabrasClave(keywords);
+                  },
+                  child: const Text(
+                    'Guardar y cerrar',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-              ],
-            );
-          },
-        );
-      },
-    );
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+  Future<void> _guardarPalabrasClave(List<String> keywords) async {
+    try {
+      final storage = StorageService();
+
+      final token = await storage.getToken();
+      final userId = await storage.getUserId();
+
+      if (token == null || userId == null) {
+        throw Exception('Token o ID de usuario no disponibles');
+      }
+
+      final response = await http.put(
+        Uri.parse('http://localhost:3210/perfil/$userId/palabras-clave'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(keywords),
+      );
+
+      if (response.statusCode == 200) {
+        await _fetchPerfilData();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                keywords.isEmpty
+                ? 'Palabras clave eliminadas correctamente.'
+                : 'Palabras clave guardadas correctamente.',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else  if (response.statusCode == 401){
+        throw Exception('Sesión expirada. Por favor, inicia sesión de nuevo.');
+      } else {
+        String errorMsg = 'Error al guardar palabras clave';;
+        if (response.body.isNotEmpty) {
+          try {
+            final decoded = json.decode(response.body);
+            errorMsg = decoded['message'] ?? errorMsg;
+          } catch (e) {
+            print('Error al decodificar el mensaje de error: $e');
+          }
+        }
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      print('Error al guardar palabras clave: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar palabras clave: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
