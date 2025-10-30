@@ -1,30 +1,292 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:swallow_app/config/theme.dart';
+import 'package:swallow_app/services/storage_service.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
+import 'dart:html' as html;
+import 'package:dio/dio.dart';
 
-class MiCVScreen extends StatelessWidget {
+
+class MiCVScreen extends StatefulWidget {
   const MiCVScreen({super.key});
 
   @override
+  State<MiCVScreen> createState() => _MiCVScreenState();
+}
+
+class _MiCVScreenState extends State<MiCVScreen> {
+  final storage = StorageService();
+  bool isLoading = true;
+  Map<String, dynamic>? cvActual;
+
+@override
+void initState() {
+  super.initState();
+  initializeDateFormatting('es', null).then((_) {
+    _cargarCV();
+  });
+}
+
+  Future<void> _cargarCV() async {
+    try {
+      final token = await storage.getToken();
+      final userId = await storage.getUserId();
+
+      if (token == null || userId == null) {
+        throw Exception('No hay sesión activa');
+      }
+
+      // ✅ Usar TU endpoint
+      final response = await http.get(
+        Uri.parse('http://localhost:3210/usuarios/$userId/archivos/verArchivos'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ); 
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List<dynamic> archivos = decoded['data'] ?? [];
+        
+        setState(() {
+          cvActual = archivos.isNotEmpty ? archivos.last : null;
+          isLoading = false;
+        });
+
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      print('❌ Error cargando CV: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _seleccionarYSubirCV() async {
+    try {
+      // Seleccionar archivo
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (result == null) return;
+
+      final file = result.files.first;
+
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        _mostrarError('El archivo es muy grande. Máximo 5MB.');
+        return;
+      }
+
+      setState(() => isLoading = true);
+
+      final token = await storage.getToken();
+      final userId = await storage.getUserId();
+
+      if (token == null || userId == null) {
+        throw Exception('No hay sesión activa');
+      }
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://localhost:3210/usuarios/$userId/archivos/subir'),
+      );
+
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+      });
+
+      // Agregar el archivo
+      if (kIsWeb) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            file.bytes!,
+            filename: file.name,
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath('file', file.path!),
+        );
+      }
+
+      // Enviar la petición
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await _cargarCV();
+        _mostrarExito('CV actualizado correctamente');
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesión expirada. Por favor, inicia sesión de nuevo.');
+      } else {
+        throw Exception('Error al subir el CV (${response.statusCode})');
+      }
+    } catch (e) {
+      print('❌ Error subiendo CV: $e');
+      _mostrarError('Error al subir el CV: ${e.toString().replaceFirst('Exception: ', '')}');
+      setState(() => isLoading = false);
+    }
+  }
+
+Future<void> _descargarCV() async {
+  if (cvActual == null) return;
+
+  try {
+    final token = await storage.getToken();
+    final userId = await storage.getUserId();
+    if (token == null || userId == null) throw Exception('No hay sesión activa');
+
+    final archivoId = cvActual!['id'];
+    final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
+    final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/descargar';
+
+    // 🔹 Caso Flutter Web
+    if (kIsWeb) {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        final blob = html.Blob([bytes]);
+        final fileUrl = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: fileUrl)
+          ..setAttribute('download', nombreArchivo)
+          ..click();
+        html.Url.revokeObjectUrl(fileUrl);
+        _mostrarExito('Descarga iniciada en el navegador');
+      } else {
+        _mostrarError('Error al descargar el archivo');
+      }
+      return;
+    }
+
+    final dio = Dio();
+    dio.options.headers['Authorization'] = 'Bearer $token';
+
+    final dir = await getApplicationDocumentsDirectory();
+    final filePath = '${dir.path}/$nombreArchivo';
+
+    await dio.download(url, filePath);
+    _mostrarExito('Archivo descargado en: $filePath');
+
+    // Intentar abrir el archivo
+    await OpenFilex.open(filePath);
+
+  } catch (e) {
+    print('❌ Error descargando CV: $e');
+    _mostrarError('Error al descargar el CV');
+  }
+}
+
+
+void _verCV() async {
+  if (cvActual == null) return;
+
+  try {
+    final token = await storage.getToken();
+    final userId = await storage.getUserId();
+    final archivoId = cvActual!['id'];
+    final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/ver';
+    final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
+
+    if (kIsWeb) {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        // Abrir PDF en nueva pestaña
+        final bytes = response.bodyBytes;
+        final blob = html.Blob([bytes], 'application/pdf');
+        final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+        html.window.open(blobUrl, '_blank'); // abre en nueva pestaña
+        html.Url.revokeObjectUrl(blobUrl);
+        _mostrarExito('Mostrando CV...');
+      } else {
+        _mostrarError('Error al abrir el archivo');
+      }
+      return;
+    }
+
+    final dio = Dio();
+    dio.options.headers['Authorization'] = 'Bearer $token';
+
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/$nombreArchivo';
+
+    await dio.download(url, filePath);
+    await OpenFilex.open(filePath);
+  } catch (e) {
+    print('❌ Error al abrir PDF: $e');
+    _mostrarError('Error al abrir el PDF');
+  }
+}
+
+String _formatFecha(String? fechaStr) {
+  if (fechaStr == null || fechaStr.isEmpty) return 'Fecha desconocida';
+  try {
+    final regex = RegExp(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})');
+    final match = regex.firstMatch(fechaStr);
+    if (match == null) return 'Fecha desconocida';
+
+    final cleaned = match.group(1)!; 
+    final fecha = DateTime.parse(cleaned).toLocal();
+
+    return DateFormat('d \'de\' MMMM, yyyy', 'es').format(fecha);
+  } catch (e) {
+    print('⚠️ Error parseando fecha: $fechaStr ($e)');
+    return 'Fecha desconocida';
+  }
+}
+
+  void _mostrarExito(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _mostrarError(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _buildAppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        title: const Text(
-          "Mi CV",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-        ),
-      ),
-      body: Padding(
+      appBar: _buildAppBar(),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -39,140 +301,217 @@ class MiCVScreen extends StatelessWidget {
             ),
             const SizedBox(height: 25),
 
-            // Contenedor del archivo CV
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.picture_as_pdf,
-                      color: Colors.redAccent, size: 40),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "CV_Andrea_Martinez.pdf",
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          "Subido el 20 de Enero, 2025",
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 3),
-                        const Text(
-                          "2.3 MB · PDF",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
-                    label: const Text("Ver"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[200],
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  )
-                ],
-              ),
-            ),
+            // CV actual o mensaje de "sin CV"
+            if (cvActual != null) _buildCVCard() else _buildNoCVCard(),
 
             const SizedBox(height: 25),
 
-            // Botones Actualizar y Descargar
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.upload_file),
-                    label: const Text("Actualizar CV"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.download),
-                    label: const Text("Descargar"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // Botones de acción
+            _buildActionButtons(),
 
             const SizedBox(height: 25),
 
             // Recomendación
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.blue, size: 22),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Recomendación",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Mantén tu CV actualizado para mejorar tus oportunidades de encontrar el trabajo ideal.",
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
+            _buildRecommendationCard(),
           ],
         ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+        onPressed: () => Navigator.pop(context),
+      ),
+      centerTitle: true,
+      title: const Text(
+        "Mi CV",
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCVCard() {
+    final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
+    final tamanio = cvActual!['tamanio'] ?? 'Tamaño desconocido';
+    final fechaSubida = cvActual!['fechaSubida'];
+
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.lightPrimary),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.picture_as_pdf,
+            color: Colors.redAccent,
+            size: 40,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nombreArchivo,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  fechaSubida != null 
+                      ? 'Subido el ${_formatFecha(fechaSubida)}'
+                      : 'Fecha no disponible',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$tamanio · PDF',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: _verCV,
+            icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
+            label: const Text("Ver"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.lightPrimary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoCVCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.upload_file, size: 60, color: Colors.grey[400]),
+          const SizedBox(height: 10),
+          Text(
+            'No has subido tu CV',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Sube tu currículum para postularte a ofertas',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _seleccionarYSubirCV,
+            icon: const Icon(Icons.upload_file),
+            label: Text(cvActual != null ? "Actualizar CV" : "Subir CV"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.lightPrimary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ),
+        if (cvActual != null) ...[
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _descargarCV,
+              icon: const Icon(Icons.download),
+              label: const Text("Descargar"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: BorderSide(color: AppTheme.lightPrimary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildRecommendationCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.lightPrimary),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, color: Colors.blue, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Recomendación",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Mantén tu CV actualizado para mejorar tus oportunidades de encontrar el trabajo ideal. Formato PDF, máximo 5MB.",
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          )
+        ],
       ),
     );
   }
