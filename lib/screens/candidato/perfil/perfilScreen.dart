@@ -124,7 +124,6 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
     if (perfilData == null) return const Center(child: Text('No se pudo cargar el perfil.'));
 
     final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
-    final correo = perfilData!['email'] ?? perfilData!['correoAcceso'] ?? 'Sin correo';
     final ubicacion = perfilData!['ubicacion'] ?? 'Ubicación no disponible';
     final palabrasClave = (perfilData!['palabrasClave'] as List?)
             ?.where((e) => e != null && e['textoPalabraClave'] != null)
@@ -323,6 +322,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   }
 
   Widget _buildProfileOption(String title, BuildContext context) {
+    final correo = perfilData!['email'] ?? perfilData!['correoAcceso'] ?? 'Sin correo';
     void _navigateTo(Widget screen) async {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final navigator = PerfilScreen.perfilNavigatorKey.currentState;
