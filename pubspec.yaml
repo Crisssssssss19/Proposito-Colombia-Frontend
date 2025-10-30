@@ -37,6 +37,10 @@ dependencies:
 
   jwt_decoder: ^2.0.1
 
+  dio: ^5.3.3
+  path_provider: ^2.1.2
+  open_filex: ^4.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
