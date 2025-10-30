@@ -120,15 +120,8 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (perfilData == null) {
-      return const Center(
-        child: Text('No se pudo cargar la información del perfil.'),
-      );
-    }
+    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (perfilData == null) return const Center(child: Text('No se pudo cargar el perfil.'));
 
     final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
     final ubicacion = perfilData!['ubicacion'] ?? 'Ubicación no disponible';
@@ -152,11 +145,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
             const Center(
               child: Text(
                 'Perfil',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
               ),
             ),
             const SizedBox(height: 20),
@@ -333,6 +322,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   }
 
   Widget _buildProfileOption(String title, BuildContext context) {
+    final correo = perfilData!['email'] ?? perfilData!['correoAcceso'] ?? 'Sin correo';
     void _navigateTo(Widget screen) async {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final navigator = PerfilScreen.perfilNavigatorKey.currentState;
@@ -352,7 +342,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
         if (title == 'Datos básicos') {
           _navigateTo(const DatosBasicosScreen());
         } else if (title == 'Correo electrónico') {
-          _navigateTo(const CorreoElectronicoScreen());
+          _navigateTo(CorreoElectronicoScreen(email: correo ?? ''));
         } else if (title == 'Número de teléfono') {
           _navigateTo(const TelefonoScreen());
         } else if (title == 'Mi CV') {
@@ -370,17 +360,10 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
         decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.lightPrimary, width: 1),
+          border: Border.all(color: AppTheme.lightPrimary),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.black,
-          ),
-        ),
+        child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       ),
     );
   }
