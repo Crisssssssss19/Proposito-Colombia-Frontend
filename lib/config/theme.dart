@@ -111,4 +111,6 @@ static const Color _success = Color(0xFF4CAF50);
   static const Color lightTextSecondary = _lightTextSecondary;
   static const Color lightSecondary = _lightSecondary;
   static const Color lightBackgroundSecondary = _lightBackgroundSecondary;
+  static const Color lightBackground = _lightBackground;
+  static const Color lightBorder = _lightBorder;
 }

@@ -34,7 +34,6 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
       setState(() {
         _telefonoController.text = telefono;
         _isLoading = false;
-        status = VerificationStatus.unverified;
       });
     } catch (e) {
       print("Error cargando teléfono: $e");
@@ -98,122 +97,224 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
     }
   }
 
+  // === UI ===
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context); // 🎨 Tema dinámico (claro/oscuro)
+    final colorScheme = theme.colorScheme;
+
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.background,
       appBar: AppBar(
-        title: const Text("Cambio de teléfono", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 0,
+        title: const Text("Phone-Verification"),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildTelefonoSection(),
-            const SizedBox(height: 20),
-            if (status == VerificationStatus.pending)
-              _buildCodigoSection(),
-            const SizedBox(height: 20),
-            _buildInfoSection(),
+            _buildPhoneSection(theme, colorScheme),
+            const SizedBox(height: 16),
+            _buildWhyVerifySection(theme, colorScheme),
+            const SizedBox(height: 16),
+            _buildInfoBox(theme, colorScheme),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTelefonoSection() {
+  Widget _buildPhoneSection(ThemeData theme, ColorScheme colors) {
+    Color borderColor = theme.dividerColor;
+    Color fillColor = theme.cardColor;
+    String? message;
+    Color? messageColor;
+
+    switch (status) {
+      case VerificationStatus.pending:
+        borderColor = Colors.orange;
+        fillColor = Colors.orange.withOpacity(0.08);
+        message = "Hemos enviado un código de verificación por SMS a tu número. Revisa tus mensajes.";
+        messageColor = Colors.orange;
+        break;
+      case VerificationStatus.verified:
+        borderColor = Colors.green;
+        fillColor = Colors.green.withOpacity(0.08);
+        message = "Teléfono verificado correctamente";
+        messageColor = Colors.green[700];
+        break;
+      default:
+        break;
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.lightPrimary),
+        color: fillColor,
+        border: Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Número de teléfono", style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
+          const Row(
+            children: [
+              Icon(Icons.phone),
+              SizedBox(width: 8),
+              Text(
+                "Número de Teléfono",
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text("Número de Contacto",
+              style: TextStyle(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 5),
           TextField(
             controller: _telefonoController,
             readOnly: !_editando,
-            keyboardType: TextInputType.phone,
             decoration: InputDecoration(
               suffixIcon: IconButton(
-                icon: Icon(_editando ? Icons.check : Icons.edit, color: AppTheme.lightPrimary),
+                icon: Icon(_editando ? Icons.check : Icons.edit,
+                    color: colors.primary),
                 onPressed: () {
                   if (_editando) {
                     setState(() => _editando = false);
-                    _enviarCodigo(); // Enviar código al número anterior
+                    _enviarCodigo();
                   } else {
                     setState(() => _editando = true);
                   }
                 },
               ),
+              suffixText: _textoEstado(),
+              suffixStyle: TextStyle(
+                color: _colorEstado(),
+                fontWeight: FontWeight.bold,
+              ),
               border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            "Estado: ${_textoEstado()}",
-            style: TextStyle(color: _colorEstado(), fontWeight: FontWeight.bold),
-          ),
+          if (status == VerificationStatus.unverified)
+            ElevatedButton.icon(
+              onPressed: _isSending ? null : _enviarCodigo,
+              icon: const Icon(Icons.send, size: 18),
+              label: const Text("Verificar Teléfono"),
+            ),
+          if (status == VerificationStatus.pending)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isSending ? null : _enviarCodigo,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.orange),
+                    ),
+                    child: const Text("Reenviar",
+                        style: TextStyle(color: Colors.orange)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isVerifying ? null : _verificarCodigo,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                    ),
+                    child: const Text("Ya recibí el código"),
+                  ),
+                ),
+              ],
+            ),
+          if (message != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: messageColor!.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: messageColor.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: messageColor, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      message!,
+                      style: TextStyle(
+                        color: messageColor,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildCodigoSection() {
+  Widget _buildWhyVerifySection(ThemeData theme, ColorScheme colors) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.orange),
+        color: theme.cardColor,
+        border: Border.all(color: theme.dividerColor),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Ingresa el código enviado a tu teléfono anterior",
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _codigoController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: "Código de 6 dígitos",
-            ),
+          Row(
+            children: [
+              Icon(Icons.shield_outlined),
+              SizedBox(width: 8),
+              Text("¿Por qué verificar tu teléfono?",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ],
           ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: _isVerifying ? null : _verificarCodigo,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: _isVerifying
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text("Confirmar verificación"),
+          SizedBox(height: 10),
+          Text(
+            "• Recibe notificaciones importantes sobre ofertas laborales por SMS.\n"
+            "• Permite que los empleadores te contacten directamente.\n"
+            "• Mejora la seguridad de tu cuenta con verificación en dos pasos.\n"
+            "• Aumenta tu credibilidad ante empleadores.",
+            style: TextStyle(fontSize: 13.5, height: 1.4),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoSection() {
+  Widget _buildInfoBox(ThemeData theme, ColorScheme colors) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.lightPrimary),
-        borderRadius: BorderRadius.circular(10),
+        color: theme.cardColor,
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: const Text(
-        "Por seguridad, debes confirmar el cambio desde tu número actual. "
-        "Recibirás un código SMS para validar el cambio antes de actualizarlo.",
-        style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: Colors.blue),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "Tu número de teléfono es utilizado únicamente para procesos de verificación y contacto relacionados con oportunidades laborales. Tu información está protegida según nuestras políticas de privacidad.",
+              style: TextStyle(fontSize: 13.5, height: 1.4),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -221,7 +322,7 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
   String _textoEstado() {
     switch (status) {
       case VerificationStatus.pending:
-        return "Pendiente de verificación";
+        return "Pendiente";
       case VerificationStatus.verified:
         return "Verificado";
       default:

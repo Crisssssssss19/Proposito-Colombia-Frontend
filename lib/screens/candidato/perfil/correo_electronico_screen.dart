@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '/config/theme.dart';
 import '/services/correo_service.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 enum VerificationStatus { unverified, pending, verified }
 
@@ -31,51 +31,37 @@ class _CorreoElectronicoScreenState extends State<CorreoElectronicoScreen> {
 
   Future<void> _cargarDatosCorreo() async {
     try {
-      final correo = widget.email;
-      emailController.text = correo;
-
-      final estado = await _correoService.obtenerEstadoCorreo(correo);
+      emailController.text = widget.email;
+      final estado = await _correoService.obtenerEstadoCorreo(widget.email);
       setState(() {
         status = _mapearEstado(estado);
         _isLoading = false;
       });
     } catch (e) {
-      print("Error cargando estado del correo: $e");
+      debugPrint("Error cargando estado del correo: $e");
       setState(() => _isLoading = false);
     }
   }
 
   VerificationStatus _mapearEstado(dynamic estadoRaw) {
-  if (estadoRaw == null) return VerificationStatus.unverified;
+    if (estadoRaw == null) return VerificationStatus.unverified;
+    int estado = estadoRaw is int ? estadoRaw : int.tryParse(estadoRaw.toString()) ?? 0;
 
-  int estado;
-  if (estadoRaw is int) {
-    estado = estadoRaw;
-  } else if (estadoRaw is double) {
-    estado = estadoRaw.toInt();
-  } else if (estadoRaw is String) {
-    estado = int.tryParse(estadoRaw) ?? 0;
-  } else {
-    estado = 0;
+    switch (estado) {
+      case 1:
+        return VerificationStatus.unverified;
+      case 2:
+        return VerificationStatus.pending;
+      case 3:
+        return VerificationStatus.verified;
+      default:
+        return VerificationStatus.unverified;
+    }
   }
-
-  switch (estado) {
-    case 1:
-      return VerificationStatus.unverified;
-    case 2:
-      return VerificationStatus.pending;
-    case 3:
-      return VerificationStatus.verified;
-    default:
-      return VerificationStatus.unverified;
-  }
-}
-
 
   Future<void> _enviarVerificacion() async {
     if (emailController.text.isEmpty) return;
     setState(() => _isSending = true);
-
     try {
       final result = await _correoService.enviarVerificacion(emailController.text.trim());
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +72,9 @@ class _CorreoElectronicoScreenState extends State<CorreoElectronicoScreen> {
         _mostrarCampoCodigo = true;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     } finally {
       setState(() => _isSending = false);
     }
@@ -99,7 +87,6 @@ class _CorreoElectronicoScreenState extends State<CorreoElectronicoScreen> {
       );
       return;
     }
-
     setState(() => _isVerifying = true);
     try {
       final result = await _correoService.verificarCodigo(
@@ -132,73 +119,175 @@ class _CorreoElectronicoScreenState extends State<CorreoElectronicoScreen> {
   // === UI ===
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
+      backgroundColor: colorScheme.background,
       appBar: AppBar(
-        title: const Text("Verificación de correo", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 0,
+        title: const Text("Email-Verification"),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: Icon(Icons.edit_outlined, color: colorScheme.primary),
+          ),
+        ],
       ),
-      backgroundColor: Colors.white,
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(
-              controller: emailController,
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: "Correo electrónico",
-                suffixText: _textoEstado(),
-                suffixStyle: TextStyle(color: _colorEstado(), fontWeight: FontWeight.bold),
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 15),
-            if (status == VerificationStatus.unverified)
-              ElevatedButton(
-                onPressed: _isSending ? null : _enviarVerificacion,
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.lightPrimary),
-                child: _isSending
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Enviar verificación"),
-              ),
-            if (_mostrarCampoCodigo || status == VerificationStatus.pending)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  const Text("Ingresa el código recibido"),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: codigoController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: "Código de 6 dígitos",
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: _isVerifying ? null : _verificarCodigo,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    child: _isVerifying
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Confirmar verificación"),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 25),
-            Text(
-              "Verificar tu correo garantiza la seguridad de tu cuenta y recuperación de acceso.",
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
-            ),
+            _buildCorreoCard(theme, colorScheme, textTheme),
+            const SizedBox(height: 16),
+            _buildInfoCard(theme, colorScheme, textTheme),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCorreoCard(ThemeData theme, ColorScheme colors, TextTheme texts) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.mail, color: colors.primary),
+              const SizedBox(width: 8),
+              Text("Correo Electrónico",
+                  style: texts.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: emailController,
+            readOnly: true,
+            style: texts.bodyLarge,
+            decoration: InputDecoration(
+              labelText: "Dirección de Correo",
+              labelStyle: texts.bodyMedium?.copyWith(color: colors.secondary),
+              suffixText: _textoEstado(),
+              suffixStyle: TextStyle(color: _colorEstado(), fontWeight: FontWeight.bold),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (status == VerificationStatus.unverified)
+            _buildVerifyButton(colors),
+          if (status == VerificationStatus.pending)
+            _buildPendingSection(),
+          if (_mostrarCampoCodigo)
+            _buildCodigoInput(colors),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerifyButton(ColorScheme colors) {
+    return ElevatedButton.icon(
+      onPressed: _isSending ? null : _enviarVerificacion,
+      icon: const Icon(LucideIcons.send),
+      label: _isSending
+          ? const SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            )
+          : const Text("Verificar Correo"),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colors.primary,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  Widget _buildPendingSection() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade300),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: Colors.orange),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "Hemos enviado un código de verificación a tu correo. Revisa tu bandeja y spam.",
+              style: TextStyle(color: Colors.orange.shade700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCodigoInput(ColorScheme colors) {
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        TextField(
+          controller: codigoController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: "Código de 6 dígitos",
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: _isVerifying ? null : _verificarCodigo,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          child: _isVerifying
+              ? const CircularProgressIndicator(color: Colors.white)
+              : const Text("Confirmar verificación"),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard(ThemeData theme, ColorScheme colors, TextTheme texts) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("🔒 ¿Por qué verificar tu correo?",
+              style: texts.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(
+            "• Asegura que las ofertas laborales lleguen directamente a tu bandeja.\n"
+            "• Permite recuperar tu cuenta en caso de olvido de contraseña.\n"
+            "• Protege tu perfil de accesos no autorizados.\n"
+            "• Aumenta la confianza de los empleadores.",
+            style: texts.bodyMedium,
+          ),
+        ],
       ),
     );
   }
