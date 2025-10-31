@@ -63,7 +63,7 @@ class _MiCVScreenState extends State<MiCVScreen> {
         setState(() => isLoading = false);
       }
     } catch (e) {
-      print('❌ Error cargando CV: $e');
+      print('Error cargando CV: $e');
       setState(() => isLoading = false);
     }
   }
@@ -146,7 +146,7 @@ class _MiCVScreenState extends State<MiCVScreen> {
       final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
       final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/descargar';
 
-      // 🔹 Caso Flutter Web
+      // Caso Flutter Web
       if (kIsWeb) {
         final response = await http.get(
           Uri.parse(url),
@@ -155,7 +155,6 @@ class _MiCVScreenState extends State<MiCVScreen> {
 
         if (response.statusCode == 200) {
           final bytes = response.bodyBytes;
-          // ✅ Usa la función del import condicional
           downloadFileWeb(bytes, nombreArchivo);
           _mostrarExito('Descarga iniciada en el navegador');
         } else {
@@ -164,7 +163,7 @@ class _MiCVScreenState extends State<MiCVScreen> {
         return;
       }
 
-      // 🔹 Caso Móvil (Android/iOS)
+      // Caso Móvil (Android/iOS)
       // Solicitar permisos
       if (Platform.isAndroid) {
         final status = await Permission.storage.request();
@@ -243,7 +242,6 @@ class _MiCVScreenState extends State<MiCVScreen> {
 
         if (response.statusCode == 200) {
           final bytes = response.bodyBytes;
-          // ✅ Usa la función del import condicional
           openFileWeb(bytes, 'application/pdf');
           _mostrarExito('Mostrando CV...');
         } else {
@@ -262,7 +260,7 @@ class _MiCVScreenState extends State<MiCVScreen> {
       await dio.download(url, filePath);
       await OpenFile.open(filePath);
     } catch (e) {
-      print('❌ Error al abrir PDF: $e');
+      print('Error al abrir PDF: $e');
       _mostrarError('Error al abrir el PDF');
     }
   }
@@ -279,7 +277,7 @@ class _MiCVScreenState extends State<MiCVScreen> {
 
       return DateFormat('d \'de\' MMMM, yyyy', 'es').format(fecha);
     } catch (e) {
-      print('⚠️ Error parseando fecha: $fechaStr ($e)');
+      print('Error parseando fecha: $fechaStr ($e)');
       return 'Fecha desconocida';
     }
   }

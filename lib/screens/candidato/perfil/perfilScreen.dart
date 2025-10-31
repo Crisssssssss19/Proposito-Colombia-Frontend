@@ -171,7 +171,6 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
 
       token = fetchedToken;
 
-      // Llama al backend con el token
       final response = await http.get(
         Uri.parse('http://localhost:3210/perfil/$userId/completo'),
         headers: {
@@ -324,32 +323,32 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                         ),
                       ),
                       const SizedBox(width: 15),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            nombre,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.black,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              nombre,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
                             ),
-                          ),
-                          Text(
-                            habilidadPrincipal,
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                          Text(
-                            ubicacion,
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ],
+                            Text(
+                              habilidadPrincipal,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            Text(
+                              ubicacion,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 25),
-
                   // ---- Palabras clave + botón editar ----
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -414,11 +413,11 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
           MaterialPageRoute(builder: (_) => screen),
         );
 
-        if (title == 'Datos básicos' 
-        || title == 'Competencia y habilidades'
-        || title == 'Portafolio'
-        || title == 'Competencia y habilidades'
-        || title == 'Mi CV') {
+        if (title == 'Datos básicos' ||
+            title == 'Competencia y habilidades' ||
+            title == 'Portafolio' ||
+            title == 'Competencia y habilidades' ||
+            title == 'Mi CV') {
           _fetchPerfilData();
         }
       });
@@ -461,6 +460,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
     final TextEditingController keywordController = TextEditingController();
     final List<String> keywords =
         currentKeywords.map((e) => e.toString()).toList();
+    final List<String> keywordsOriginales = List.from(keywords); // ✅ AGREGAR
 
     showDialog(
       context: context,
@@ -615,6 +615,18 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                       ),
                     ),
                     onPressed: () async {
+                      // ✅ VERIFICAR SI HUBO CAMBIOS
+                      bool huboChangios =
+                          keywords.length != keywordsOriginales.length ||
+                              !keywords
+                                  .every((k) => keywordsOriginales.contains(k));
+
+                      if (!huboChangios) {
+                        // Si no hubo cambios, solo cerrar
+                        Navigator.pop(context);
+                        return;
+                      }
+
                       if (keywords.isEmpty && currentKeywords.isNotEmpty) {
                         final confirmar = await showDialog<bool>(
                           context: context,
