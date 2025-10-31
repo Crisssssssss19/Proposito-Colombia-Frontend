@@ -8,10 +8,11 @@ import 'package:swallow_app/services/storage_service.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
-import 'dart:html' as html;
 import 'package:dio/dio.dart';
-
+import 'dart:io';
+import 'package:open_file/open_file.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:swallow_app/core/utils/file_download.dart';
 
 class MiCVScreen extends StatefulWidget {
   const MiCVScreen({super.key});
@@ -25,13 +26,13 @@ class _MiCVScreenState extends State<MiCVScreen> {
   bool isLoading = true;
   Map<String, dynamic>? cvActual;
 
-@override
-void initState() {
-  super.initState();
-  initializeDateFormatting('es', null).then((_) {
-    _cargarCV();
-  });
-}
+  @override
+  void initState() {
+    super.initState();
+    initializeDateFormatting('es', null).then((_) {
+      _cargarCV();
+    });
+  }
 
   Future<void> _cargarCV() async {
     try {
@@ -42,24 +43,22 @@ void initState() {
         throw Exception('No hay sesión activa');
       }
 
-      // ✅ Usar TU endpoint
       final response = await http.get(
         Uri.parse('http://localhost:3210/usuarios/$userId/archivos/verArchivos'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ); 
+      );
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final List<dynamic> archivos = decoded['data'] ?? [];
-        
+
         setState(() {
           cvActual = archivos.isNotEmpty ? archivos.last : null;
           isLoading = false;
         });
-
       } else {
         setState(() => isLoading = false);
       }
@@ -71,7 +70,6 @@ void initState() {
 
   Future<void> _seleccionarYSubirCV() async {
     try {
-      // Seleccionar archivo
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
@@ -81,7 +79,6 @@ void initState() {
 
       final file = result.files.first;
 
-      // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
         _mostrarError('El archivo es muy grande. Máximo 5MB.');
         return;
@@ -105,7 +102,6 @@ void initState() {
         'Authorization': 'Bearer $token',
       });
 
-      // Agregar el archivo
       if (kIsWeb) {
         request.files.add(
           http.MultipartFile.fromBytes(
@@ -120,7 +116,6 @@ void initState() {
         );
       }
 
-      // Enviar la petición
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
@@ -139,119 +134,155 @@ void initState() {
     }
   }
 
-Future<void> _descargarCV() async {
-  if (cvActual == null) return;
+  Future<void> _descargarCV() async {
+    if (cvActual == null) return;
 
-  try {
-    final token = await storage.getToken();
-    final userId = await storage.getUserId();
-    if (token == null || userId == null) throw Exception('No hay sesión activa');
+    try {
+      final token = await storage.getToken();
+      final userId = await storage.getUserId();
+      if (token == null || userId == null) throw Exception('No hay sesión activa');
 
-    final archivoId = cvActual!['id'];
-    final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
-    final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/descargar';
+      final archivoId = cvActual!['id'];
+      final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
+      final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/descargar';
 
-    // 🔹 Caso Flutter Web
-    if (kIsWeb) {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {'Authorization': 'Bearer $token'},
+      // 🔹 Caso Flutter Web
+      if (kIsWeb) {
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+          // ✅ Usa la función del import condicional
+          downloadFileWeb(bytes, nombreArchivo);
+          _mostrarExito('Descarga iniciada en el navegador');
+        } else {
+          _mostrarError('Error al descargar el archivo');
+        }
+        return;
+      }
+
+      // 🔹 Caso Móvil (Android/iOS)
+      // Solicitar permisos
+      if (Platform.isAndroid) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          _mostrarError('Permiso de almacenamiento denegado');
+          return;
+        }
+      }
+
+      final dio = Dio();
+      dio.options.headers['Authorization'] = 'Bearer $token';
+
+      // Directorio de descargas
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw Exception('No se pudo obtener el directorio');
+      }
+
+      final filePath = '${directory.path}/$nombreArchivo';
+      await dio.download(url, filePath);
+      
+      _mostrarExito('Descargado: $nombreArchivo');
+
+      // Preguntar si quiere abrir
+      final abrir = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Descarga completa'),
+          content: Text('¿Deseas abrir $nombreArchivo?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Abrir'),
+            ),
+          ],
+        ),
       );
 
-      if (response.statusCode == 200) {
-        final bytes = response.bodyBytes;
-        final blob = html.Blob([bytes]);
-        final fileUrl = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: fileUrl)
-          ..setAttribute('download', nombreArchivo)
-          ..click();
-        html.Url.revokeObjectUrl(fileUrl);
-        _mostrarExito('Descarga iniciada en el navegador');
-      } else {
-        _mostrarError('Error al descargar el archivo');
+      if (abrir == true) {
+        await OpenFile.open(filePath);
       }
-      return;
+    } catch (e) {
+      print('❌ Error descargando CV: $e');
+      _mostrarError('Error al descargar el CV');
     }
-
-    final dio = Dio();
-    dio.options.headers['Authorization'] = 'Bearer $token';
-
-    final dir = await getApplicationDocumentsDirectory();
-    final filePath = '${dir.path}/$nombreArchivo';
-
-    await dio.download(url, filePath);
-    _mostrarExito('Archivo descargado en: $filePath');
-
-    // Intentar abrir el archivo
-    await OpenFilex.open(filePath);
-
-  } catch (e) {
-    print('❌ Error descargando CV: $e');
-    _mostrarError('Error al descargar el CV');
   }
-}
 
+  void _verCV() async {
+    if (cvActual == null) return;
 
-void _verCV() async {
-  if (cvActual == null) return;
+    try {
+      final token = await storage.getToken();
+      final userId = await storage.getUserId();
+      final archivoId = cvActual!['id'];
+      final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/ver';
+      final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
 
-  try {
-    final token = await storage.getToken();
-    final userId = await storage.getUserId();
-    final archivoId = cvActual!['id'];
-    final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/ver';
-    final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
+      if (kIsWeb) {
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {'Authorization': 'Bearer $token'},
+        );
 
-    if (kIsWeb) {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        // Abrir PDF en nueva pestaña
-        final bytes = response.bodyBytes;
-        final blob = html.Blob([bytes], 'application/pdf');
-        final blobUrl = html.Url.createObjectUrlFromBlob(blob);
-        html.window.open(blobUrl, '_blank'); // abre en nueva pestaña
-        html.Url.revokeObjectUrl(blobUrl);
-        _mostrarExito('Mostrando CV...');
-      } else {
-        _mostrarError('Error al abrir el archivo');
+        if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+          // ✅ Usa la función del import condicional
+          openFileWeb(bytes, 'application/pdf');
+          _mostrarExito('Mostrando CV...');
+        } else {
+          _mostrarError('Error al abrir el archivo');
+        }
+        return;
       }
-      return;
+
+      // 🔹 Caso Móvil
+      final dio = Dio();
+      dio.options.headers['Authorization'] = 'Bearer $token';
+
+      final dir = await getTemporaryDirectory();
+      final filePath = '${dir.path}/$nombreArchivo';
+
+      await dio.download(url, filePath);
+      await OpenFile.open(filePath);
+    } catch (e) {
+      print('❌ Error al abrir PDF: $e');
+      _mostrarError('Error al abrir el PDF');
     }
-
-    final dio = Dio();
-    dio.options.headers['Authorization'] = 'Bearer $token';
-
-    final dir = await getTemporaryDirectory();
-    final filePath = '${dir.path}/$nombreArchivo';
-
-    await dio.download(url, filePath);
-    await OpenFilex.open(filePath);
-  } catch (e) {
-    print('❌ Error al abrir PDF: $e');
-    _mostrarError('Error al abrir el PDF');
   }
-}
 
-String _formatFecha(String? fechaStr) {
-  if (fechaStr == null || fechaStr.isEmpty) return 'Fecha desconocida';
-  try {
-    final regex = RegExp(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})');
-    final match = regex.firstMatch(fechaStr);
-    if (match == null) return 'Fecha desconocida';
+  String _formatFecha(String? fechaStr) {
+    if (fechaStr == null || fechaStr.isEmpty) return 'Fecha desconocida';
+    try {
+      final regex = RegExp(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})');
+      final match = regex.firstMatch(fechaStr);
+      if (match == null) return 'Fecha desconocida';
 
-    final cleaned = match.group(1)!; 
-    final fecha = DateTime.parse(cleaned).toLocal();
+      final cleaned = match.group(1)!;
+      final fecha = DateTime.parse(cleaned).toLocal();
 
-    return DateFormat('d \'de\' MMMM, yyyy', 'es').format(fecha);
-  } catch (e) {
-    print('⚠️ Error parseando fecha: $fechaStr ($e)');
-    return 'Fecha desconocida';
+      return DateFormat('d \'de\' MMMM, yyyy', 'es').format(fecha);
+    } catch (e) {
+      print('⚠️ Error parseando fecha: $fechaStr ($e)');
+      return 'Fecha desconocida';
+    }
   }
-}
 
   void _mostrarExito(String mensaje) {
     if (!mounted) return;
@@ -301,17 +332,14 @@ String _formatFecha(String? fechaStr) {
             ),
             const SizedBox(height: 25),
 
-            // CV actual o mensaje de "sin CV"
             if (cvActual != null) _buildCVCard() else _buildNoCVCard(),
 
             const SizedBox(height: 25),
 
-            // Botones de acción
             _buildActionButtons(),
 
             const SizedBox(height: 25),
 
-            // Recomendación
             _buildRecommendationCard(),
           ],
         ),
@@ -373,7 +401,7 @@ String _formatFecha(String? fechaStr) {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  fechaSubida != null 
+                  fechaSubida != null
                       ? 'Subido el ${_formatFecha(fechaSubida)}'
                       : 'Fecha no disponible',
                   style: TextStyle(color: Colors.grey[600]),
