@@ -153,52 +153,32 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
 
       request.headers['Authorization'] = 'Bearer $token';
 
-      if (kIsWeb) {
-        var bytes = await image.readAsBytes();
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'File',
-            bytes,
-            filename: image.name,
-          ),
-        );
-      } else {
-        request.files
-            .add(await http.MultipartFile.fromPath('File', image.path));
-      }
+      // Leer los bytes de la imagen (funciona para web y móvil)
+      final bytes = await image.readAsBytes();
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'File',
+          bytes,
+          filename: image.name,
+        ),
+      );
 
-      request.fields['favorita'] = 'false';
+      request.fields['favorita'] = 'true'; // ← Marcar como favorita
+      request.fields['categoria'] = '1'; // ← 1 = PERFIL
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = json.decode(response.body);
-        final nuevaImagenId = responseData['data']['id'];
+        await _cargarDatos();
 
-        final favoritaResponse = await http.put(
-          Uri.parse(
-              'http://localhost:3210/usuarios/$userId/imagenes/$nuevaImagenId/favorita'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-
-        if (favoritaResponse.statusCode == 200) {
-          await _cargarDatos();
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Foto de perfil actualizada correctamente'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        } else {
-          throw Exception(
-              'Error al marcar como favorita: ${favoritaResponse.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Foto de perfil actualizada correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
       } else {
         throw Exception('Error al subir imagen: ${response.statusCode}');
@@ -603,8 +583,8 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
         child: Column(
           children: [
             Container(
-              width: double.infinity, 
-              padding: const EdgeInsets.all(14), 
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 border: Border.all(color: AppTheme.lightPrimary),
                 borderRadius: BorderRadius.circular(12),
@@ -653,7 +633,8 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                                             },
                                             errorBuilder:
                                                 (context, error, stackTrace) {
-                                              print('Error cargando imagen: $error');
+                                              print(
+                                                  'Error cargando imagen: $error');
                                               return const Icon(
                                                 Icons.person,
                                                 size: 45,
@@ -702,7 +683,8 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                                             },
                                             errorBuilder:
                                                 (context, error, stackTrace) {
-                                              print('Error cargando imagen: $error');
+                                              print(
+                                                  'Error cargando imagen: $error');
                                               return const Icon(
                                                 Icons.person,
                                                 size: 45,
@@ -798,7 +780,7 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                   _buildInput('Profesión/Cargo', cargoController,
                       enabled: false),
                   const SizedBox(height: 10),
-                  _buildUbicacionInput(), // ✅ Usar el nuevo widget
+                  _buildUbicacionInput(), 
                 ],
               ),
             ),
@@ -839,7 +821,7 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
     required Widget child,
   }) {
     return Container(
-      width: double.infinity, 
+      width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         border: Border.all(color: AppTheme.lightPrimary),
