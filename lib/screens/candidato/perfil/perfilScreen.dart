@@ -80,6 +80,83 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
     return _capitalize(lower);
   }
 
+  double _calcularProgresoPerfil() {
+    if (perfilData == null) return 0.0;
+
+    int camposCompletados = 0;
+    int totalCampos = 11; // Total de campos a evaluar
+
+    // 1. Nombres (obligatorio - ya existe)
+    if (perfilData!['nombres'] != null &&
+        perfilData!['nombres'].toString().isNotEmpty) {
+      camposCompletados++;
+    }
+
+    // 2. Apellidos (obligatorio - ya existe)
+    if (perfilData!['apellidos'] != null &&
+        perfilData!['apellidos'].toString().isNotEmpty) {
+      camposCompletados++;
+    }
+
+    // 3. Email
+    if (perfilData!['email'] != null &&
+        perfilData!['email'].toString().isNotEmpty) {
+      camposCompletados++;
+    }
+
+    // 4. Teléfono
+    if (perfilData!['telefono'] != null &&
+        perfilData!['telefono'].toString().isNotEmpty) {
+      camposCompletados++;
+    }
+
+    // 5. Ubicación
+    if (perfilData!['ubicacion'] != null &&
+        perfilData!['ubicacion'].toString().isNotEmpty &&
+        perfilData!['ubicacion'] != 'Ubicación no disponible') {
+      camposCompletados++;
+    }
+
+    // 6. Foto de perfil
+    if (perfilData!['fotoPerfil'] != null &&
+        perfilData!['fotoPerfil'].toString().isNotEmpty) {
+      camposCompletados++;
+    }
+
+    // 7. Habilidad principal
+    if (perfilData!['HabilidadPrincipal'] != null &&
+        perfilData!['HabilidadPrincipal'].toString().isNotEmpty &&
+        perfilData!['HabilidadPrincipal'] != 'Sin habilidad principal') {
+      camposCompletados++;
+    }
+
+    // 8. Palabras clave (al menos 3)
+    final palabrasClave = perfilData!['palabrasClave'] as List?;
+    if (palabrasClave != null && palabrasClave.length >= 3) {
+      camposCompletados++;
+    }
+
+    // 9. Habilidades (al menos 2)
+    final habilidades = perfilData!['habilidades'] as List?;
+    if (habilidades != null && habilidades.length >= 2) {
+      camposCompletados++;
+    }
+
+    // 10. CV/Archivos (al menos 1)
+    final archivos = perfilData!['archivos'] as List?;
+    if (archivos != null && archivos.isNotEmpty) {
+      camposCompletados++;
+    }
+
+    // 11. Imágenes de portafolio (al menos 3)
+    final imagenes = perfilData!['imagenes'] as List?;
+    if (imagenes != null && imagenes.length >= 3) {
+      camposCompletados++;
+    }
+
+    return camposCompletados / totalCampos;
+  }
+
   Future<void> _fetchPerfilData() async {
     try {
       final storage = StorageService();
@@ -121,7 +198,8 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) return const Center(child: CircularProgressIndicator());
-    if (perfilData == null) return const Center(child: Text('No se pudo cargar el perfil.'));
+    if (perfilData == null)
+      return const Center(child: Text('No se pudo cargar el perfil.'));
 
     final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
     final ubicacion = perfilData!['ubicacion'] ?? 'Ubicación no disponible';
@@ -145,7 +223,10 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
             const Center(
               child: Text(
                 'Perfil',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
               ),
             ),
             const SizedBox(height: 20),
@@ -164,8 +245,8 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                   // Completar perfil
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text(
+                    children: [
+                      const Text(
                         'Completar perfil',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
@@ -173,8 +254,8 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                         ),
                       ),
                       Text(
-                        '75%',
-                        style: TextStyle(
+                        '${(_calcularProgresoPerfil() * 100).toInt()}%',
+                        style: const TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.bold,
                         ),
@@ -185,12 +266,13 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
-                      value: 0.75,
+                      value: _calcularProgresoPerfil(),
                       color: AppTheme.lightPrimary,
-                      backgroundColor: Colors.grey,
+                      backgroundColor: Colors.grey[300],
                       minHeight: 8,
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
                   // ---- Datos usuario ---
@@ -322,7 +404,8 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   }
 
   Widget _buildProfileOption(String title, BuildContext context) {
-    final correo = perfilData!['email'] ?? perfilData!['correoAcceso'] ?? 'Sin correo';
+    final correo =
+        perfilData!['email'] ?? perfilData!['correoAcceso'] ?? 'Sin correo';
     void _navigateTo(Widget screen) async {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final navigator = PerfilScreen.perfilNavigatorKey.currentState;
@@ -331,7 +414,11 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
           MaterialPageRoute(builder: (_) => screen),
         );
 
-        if (title == 'Datos básicos' || title == 'Competencia y habilidades') {
+        if (title == 'Datos básicos' 
+        || title == 'Competencia y habilidades'
+        || title == 'Portafolio'
+        || title == 'Competencia y habilidades'
+        || title == 'Mi CV') {
           _fetchPerfilData();
         }
       });
@@ -363,7 +450,8 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
           border: Border.all(color: AppTheme.lightPrimary),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        child: Text(title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       ),
     );
   }
