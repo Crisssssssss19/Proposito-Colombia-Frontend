@@ -154,10 +154,7 @@ class _ConfiguracionGeneralScreenState
   }
 }
 
-// ===============================
-//  DIALOG CAMBIAR CONTRASEÑA
-// ===============================
-
+// DIALOG CAMBIAR CONTRASEÑA
 class CambiarContrasenaDialog extends StatefulWidget {
   final StorageService storage;
 
@@ -362,10 +359,8 @@ class _CambiarContrasenaDialogState extends State<CambiarContrasenaDialog> {
   }
 }
 
-// ===============================
-//  OTROS DIALOGS
-// ===============================
 
+//  OTROS DIALOGS
 class AcercaDeDialog extends StatelessWidget {
   const AcercaDeDialog({super.key});
 
@@ -418,7 +413,6 @@ class AyudaSoporteDialog extends StatelessWidget {
             title: const Text("Contacto por email"),
             subtitle: const Text("soporte@swallow.co"),
             onTap: () {
-              // Aquí puedes agregar lógica para abrir el cliente de email
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Abriendo cliente de email...')),
               );
