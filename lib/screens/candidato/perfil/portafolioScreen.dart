@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:swallow_app/config/theme.dart';
+import 'package:swallow_app/config/paleta_colores.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -100,15 +100,13 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
 
       request.headers['Authorization'] = 'Bearer $token';
 
-      // Lee los bytes de la imagen
       final bytes = await image.readAsBytes();
 
-      // Crea el MultipartFile desde bytes (funciona en web y móvil)
       request.files.add(
         http.MultipartFile.fromBytes(
           'File',
           bytes,
-          filename: image.name, // Nombre del archivo
+          filename: image.name,
         ),
       );
 
@@ -150,14 +148,12 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: Colors.white,
         title: const Text(
           'Confirmar eliminación',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         content: const Text(
           '¿Estás seguro de eliminar esta imagen?',
-          style: TextStyle(color: Colors.grey),
         ),
         actions: [
           TextButton(
@@ -216,41 +212,48 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorAzulCielo = AppTheme.lightPrimary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final primaryColor = colors.primary;
+    
+    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textoPrincipal = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textoSecundario = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final surfaceColor = isDark ? Colors.grey[800] : Colors.grey[300];
     final colorVerde = const Color(0xFF00A86B);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: textoPrincipal),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Portafolio',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: textoPrincipal, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: backgroundColor,
         elevation: 0,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: primaryColor))
           : RefreshIndicator(
               onRefresh: _cargarImagenes,
-              color: AppTheme.lightPrimary,
+              color: primaryColor,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    const Icon(Icons.camera_alt_outlined,
-                        color: Colors.blueAccent, size: 28),
+                    Icon(Icons.camera_alt_outlined,
+                        color: primaryColor, size: 28),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Muestra tus mejores proyectos y trabajos realizados",
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(color: textoSecundario, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
@@ -260,14 +263,14 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                         ? Container(
                             padding: const EdgeInsets.all(40),
                             child: Column(
-                              children: const [
+                              children: [
                                 Icon(Icons.photo_library_outlined,
-                                    size: 80, color: Colors.grey),
-                                SizedBox(height: 16),
+                                    size: 80, color: textoSecundario),
+                                const SizedBox(height: 16),
                                 Text(
                                   'No tienes imágenes en tu portafolio',
                                   style: TextStyle(
-                                      color: Colors.grey, fontSize: 16),
+                                      color: textoSecundario, fontSize: 16),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
@@ -279,15 +282,21 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
-                              childAspectRatio:
-                                  0.65, // Ajustado para el nuevo diseño
+                              childAspectRatio: 0.65,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
                             ),
                             itemCount: _imagenes.length,
                             itemBuilder: (context, index) {
                               final imagen = _imagenes[index];
-                              return _buildProyectoCard(imagen, colorAzulCielo);
+                              return _buildProyectoCard(
+                                imagen,
+                                isDark,
+                                primaryColor,
+                                textoPrincipal,
+                                textoSecundario,
+                                surfaceColor!,
+                              );
                             },
                           ),
 
@@ -298,7 +307,7 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                       onTap: _agregarImagen,
                       child: Container(
                         decoration: BoxDecoration(
-                          border: Border.all(color: colorAzulCielo),
+                          border: Border.all(color: primaryColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         padding: const EdgeInsets.all(20),
@@ -306,28 +315,28 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE8EAF6),
+                                color: primaryColor.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               padding: const EdgeInsets.all(12),
-                              child: const Icon(Icons.add,
-                                  color: Colors.blueAccent, size: 24),
+                              child: Icon(Icons.add,
+                                  color: primaryColor, size: 24),
                             ),
                             const SizedBox(height: 10),
                             Text(
                               _imagenes.length >= 5
                                   ? "Límite alcanzado (5/5)"
                                   : "Agregar nuevo proyecto (${_imagenes.length}/5)",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: Colors.black,
+                                color: textoPrincipal,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               "Sube imágenes y detalles de tu trabajo",
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(color: textoSecundario),
                             ),
                           ],
                         ),
@@ -341,12 +350,19 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildStatCard(
-                            "${_imagenes.length}",
-                            "Imágenes de\nproyectos",
-                            colorVerde,
-                            colorAzulCielo),
-                        _buildStatCard("5", "Máximo de\nfotos", colorAzulCielo,
-                            colorAzulCielo),
+                          "${_imagenes.length}",
+                          "Imágenes de\nproyectos",
+                          colorVerde,
+                          primaryColor,
+                          textoPrincipal,
+                        ),
+                        _buildStatCard(
+                          "5",
+                          "Máximo de\nfotos",
+                          primaryColor,
+                          primaryColor,
+                          textoPrincipal,
+                        ),
                       ],
                     ),
 
@@ -355,29 +371,30 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                     //  TIP PROFESIONAL
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: colorAzulCielo),
+                        border: Border.all(color: primaryColor),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline,
-                              color: Colors.blue, size: 22),
+                          Icon(Icons.info_outline,
+                              color: primaryColor, size: 22),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text(
                                   "Recomendación",
                                   style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black),
+                                    fontWeight: FontWeight.bold,
+                                    color: textoPrincipal,
+                                  ),
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
                                   "Mantén tu portafolio actualizado con tus proyectos más recientes y destacados para mostrar tu evolución profesional.",
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(color: textoSecundario),
                                 ),
                               ],
                             ),
@@ -394,13 +411,20 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
     );
   }
 
-// TARJETA DE PROYECTO
-  Widget _buildProyectoCard(dynamic imagen, Color colorBorde) {
+  // TARJETA DE PROYECTO
+  Widget _buildProyectoCard(
+    dynamic imagen,
+    bool isDark,
+    Color primaryColor,
+    Color textoPrincipal,
+    Color textoSecundario,
+    Color surfaceColor,
+  ) {
     final imageUrl = imagen['url'] ?? '';
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: colorBorde),
+        border: Border.all(color: primaryColor),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -419,16 +443,16 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                       print('Error cargando imagen: $error');
                       return Container(
                         height: 110,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.broken_image,
-                            size: 36, color: Colors.grey),
+                        color: surfaceColor,
+                        child: Icon(Icons.broken_image,
+                            size: 36, color: textoSecundario),
                       );
                     },
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
                         height: 110,
-                        color: Colors.grey[300],
+                        color: surfaceColor,
                         child: Center(
                           child: CircularProgressIndicator(
                             value: loadingProgress.expectedTotalBytes != null
@@ -436,6 +460,7 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                                     loadingProgress.expectedTotalBytes!
                                 : null,
                             strokeWidth: 2,
+                            color: primaryColor,
                           ),
                         ),
                       );
@@ -443,9 +468,9 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                   )
                 : Container(
                     height: 110,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image_outlined,
-                        size: 36, color: Colors.grey),
+                    color: surfaceColor,
+                    child: Icon(Icons.image_outlined,
+                        size: 36, color: textoSecundario),
                   ),
           ),
           const SizedBox(height: 18),
@@ -456,9 +481,9 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
               children: [
                 Text(
                   _limpiarNombreImagen(imagen['nombrePublico'] ?? 'Sin nombre'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: textoPrincipal,
                     fontSize: 14,
                   ),
                   maxLines: 2,
@@ -467,11 +492,10 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                 const SizedBox(height: 4),
                 Text(
                   imagen['tamanio'] ?? '',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: textoSecundario, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
 
-                // Fila con etiqueta y botón de ver
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -480,7 +504,7 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.blueAccent,
+                          color: primaryColor,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -507,15 +531,14 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                     ),
                     const SizedBox(width: 8),
 
-                    // Botón de ver
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: surfaceColor,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.visibility_outlined,
-                            color: Colors.black87, size: 18),
+                        icon: Icon(Icons.visibility_outlined,
+                            color: textoPrincipal, size: 18),
                         onPressed: () => _verImagenCompleta(imageUrl),
                         padding: const EdgeInsets.all(6),
                         constraints: const BoxConstraints(),
@@ -523,7 +546,6 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                       ),
                     ),
 
-                    // Botón de eliminar
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.red[50],
@@ -549,16 +571,13 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
     );
   }
 
-// Limpia el nombre de la imagen quitando "scaled_" y la extensión
   String _limpiarNombreImagen(String nombre) {
     String nombreLimpio = nombre;
 
-    // Quita "scaled_" del inicio
     if (nombreLimpio.startsWith('scaled_')) {
       nombreLimpio = nombreLimpio.substring(7);
     }
 
-    // Quita la extensión (.png, .jpg, .jpeg, etc.)
     final extensiones = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
     for (var ext in extensiones) {
       if (nombreLimpio.toLowerCase().endsWith(ext)) {
@@ -571,30 +590,39 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
     return nombreLimpio;
   }
 
-// Muestra la imagen en tamaño completo
   void _verImagenCompleta(String imageUrl) {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero, // Pantalla completa
         child: Stack(
           children: [
             Center(
               child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
                 child: Image.network(
                   imageUrl,
                   headers: {'Authorization': 'Bearer ${token ?? ""}'},
+                  fit: BoxFit.contain,
+                  width: double.infinity,
+                  height: double.infinity,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
-                      color: Colors.white,
+                      color: Colors.black,
                       padding: const EdgeInsets.all(20),
                       child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.broken_image,
-                              size: 60, color: Colors.grey),
+                              size: 60, color: Colors.white54),
                           SizedBox(height: 10),
-                          Text('Error al cargar la imagen'),
+                          Text(
+                            'Error al cargar la imagen',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ],
                       ),
                     );
@@ -602,14 +630,14 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(40),
+                      color: Colors.black,
                       child: Center(
                         child: CircularProgressIndicator(
                           value: loadingProgress.expectedTotalBytes != null
                               ? loadingProgress.cumulativeBytesLoaded /
                                   loadingProgress.expectedTotalBytes!
                               : null,
+                          color: Colors.white,
                         ),
                       ),
                     );
@@ -618,13 +646,14 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
               ),
             ),
             Positioned(
-              top: 10,
-              right: 10,
+              top: 40,
+              right: 20,
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
                 onPressed: () => Navigator.pop(context),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.black.withOpacity(0.6),
+                  backgroundColor: Colors.black.withOpacity(0.7),
+                  padding: const EdgeInsets.all(12),
                 ),
               ),
             ),
@@ -634,11 +663,15 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
     );
   }
 
-//  TARJETAS DE ESTADÍSTICAS
   Widget _buildStatCard(
-      String numero, String titulo, Color colorTexto, Color colorBorde) {
+    String numero,
+    String titulo,
+    Color colorTexto,
+    Color colorBorde,
+    Color textoPrincipal,
+  ) {
     return Container(
-      width: 140, // Aumentado para el texto más largo
+      width: 140,
       decoration: BoxDecoration(
         border: Border.all(color: colorBorde),
         borderRadius: BorderRadius.circular(12),
@@ -655,26 +688,10 @@ class _PortafolioScreenState extends State<PortafolioScreen> {
           Text(
             titulo,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.black54, fontSize: 12),
+            style: TextStyle(color: textoPrincipal, fontSize: 12),
           ),
         ],
       ),
-    );
-  }
-
-  //  BOTONES 
-  Widget _buildOutlinedButton(
-      IconData icon, String texto, Color bordeColor, VoidCallback onPressed) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        side: BorderSide(color: bordeColor, width: 1.5),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      ),
-      icon: Icon(icon, color: Colors.black, size: 18),
-      label: Text(texto, style: const TextStyle(color: Colors.black)),
     );
   }
 }
