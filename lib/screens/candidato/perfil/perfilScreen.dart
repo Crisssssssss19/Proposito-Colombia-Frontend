@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:swallow_app/screens/candidato/perfil/configuracion_general_screen.dart';
+import 'package:swallow_app/config/paleta_colores.dart';
 import 'package:swallow_app/screens/candidato/perfil/datos_basicos_screen.dart';
 import 'package:swallow_app/screens/candidato/perfil/correo_electronico_screen.dart';
 import 'package:swallow_app/screens/candidato/perfil/telefono_screen.dart';
@@ -10,6 +10,7 @@ import 'package:swallow_app/screens/candidato/perfil/editar_palabras_clave_scree
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:swallow_app/services/storage_service.dart';
+import 'package:swallow_app/screens/candidato/perfil/cambiar_contraseña_screen.dart';
 
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
@@ -19,8 +20,12 @@ class PerfilScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor =
+        isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       body: Navigator(
         key: perfilNavigatorKey,
         onGenerateRoute: (settings) {
@@ -44,14 +49,6 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   Map<String, dynamic>? perfilData;
   bool isLoading = true;
   String? token;
-
-  // Colores oficiales - Aspirante
-  static const Color _aspirantePrimario = Color(0xFF1A43FF);
-  static const Color _fondoPrincipal = Color(0xFFFFFFFF);
-  static const Color _textoPrincipal = Color(0xFF1E293B);
-  static const Color _textoSecundario = Color(0xFF475569);
-  static const Color _textoTerciario = Color(0xFF667388);
-  static const Color _fondoAzul2 = Color(0xFFE6F0FA);
 
   @override
   void initState() {
@@ -125,7 +122,6 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
       camposCompletados++;
     }
 
-    // CAMBIO: Ahora usa 'profesion' en lugar de 'HabilidadPrincipal'
     if (perfilData!['profesion'] != null &&
         perfilData!['profesion'].toString().isNotEmpty &&
         perfilData!['profesion'] != 'Sin profesión') {
@@ -192,14 +188,43 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final primaryColor = colors.primary;
+
+    // Colores según el tema
+    final backgroundColor =
+        isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textoPrincipal =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textoSecundario =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textoTerciario = isDark
+        ? const Color(0xFF7D8CA1) // darkTextTertiary
+        : const Color(0xFF667388); // lightTextTertiary
+    final surfaceColor = isDark
+        ? const Color(0xFF1E293B) // darkSurface
+        : Colors.grey[300];
+
     if (isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: _aspirantePrimario),
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        ),
       );
     }
 
     if (perfilData == null) {
-      return const Center(child: Text('No se pudo cargar el perfil.'));
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
+          child: Text(
+            'No se pudo cargar el perfil.',
+            style: TextStyle(color: textoPrincipal),
+          ),
+        ),
+      );
     }
 
     final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
@@ -209,274 +234,289 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
             .map((e) => _formatKeyword(e['textoPalabraClave'] as String))
             .toList() ??
         [];
-    // CAMBIO: Ahora usa 'profesion' en lugar de 'HabilidadPrincipal'
     final profesion = perfilData!['profesion'] ?? 'Sin profesión';
     final fotoPerfil = perfilData!['fotoPerfil'];
 
-    return RefreshIndicator(
-      onRefresh: _fetchPerfilData,
-      color: _aspirantePrimario,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Text(
-                'Perfil',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: _textoPrincipal,
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: RefreshIndicator(
+        onRefresh: _fetchPerfilData,
+        color: primaryColor,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Text(
+                  'Perfil',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: textoPrincipal,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // CUADRO PRINCIPAL
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _fondoPrincipal,
-                border: Border.all(color: _aspirantePrimario, width: 1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Completar perfil
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Completar perfil',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: _textoSecundario,
+              // CUADRO PRINCIPAL
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  border: Border.all(color: primaryColor, width: 1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Completar perfil
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Completar perfil',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: textoSecundario,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${(_calcularProgresoPerfil() * 100).toInt()}%',
-                        style: TextStyle(
-                          color: _textoPrincipal,
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          '${(_calcularProgresoPerfil() * 100).toInt()}%',
+                          style: TextStyle(
+                            color: textoPrincipal,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: _calcularProgresoPerfil(),
-                      color: _aspirantePrimario,
-                      backgroundColor: Colors.grey[300],
-                      minHeight: 8,
+                      ],
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Datos usuario
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipOval(
-                        child: Container(
-                          width: 70,
-                          height: 70,
-                          color: Colors.grey[300],
-                          child: (fotoPerfil != null && fotoPerfil.isNotEmpty)
-                              ? Image.network(
-                                  fotoPerfil,
-                                  fit: BoxFit.cover,
-                                  headers: {
-                                    'Authorization': 'Bearer ${token ?? ""}',
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(
-                                      Icons.person,
-                                      size: 35,
-                                      color: _textoTerciario,
-                                    );
-                                  },
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value: loadingProgress
-                                                    .expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                    .cumulativeBytesLoaded /
-                                                loadingProgress
-                                                    .expectedTotalBytes!
-                                            : null,
-                                        strokeWidth: 2,
-                                        color: _aspirantePrimario,
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Icon(
-                                  Icons.person,
-                                  size: 35,
-                                  color: _textoTerciario,
-                                ),
-                        ),
+                    const SizedBox(height: 5),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: _calcularProgresoPerfil(),
+                        color: primaryColor,
+                        backgroundColor: surfaceColor,
+                        minHeight: 8,
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              nombre,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: _textoPrincipal,
-                              ),
-                            ),
-                            // CAMBIO: Muestra 'profesion' en lugar de 'HabilidadPrincipal'
-                            Text(
-                              profesion,
-                              style: TextStyle(color: _textoSecundario),
-                            ),
-                            Text(
-                              ubicacion,
-                              style: TextStyle(color: _textoSecundario),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
 
-                  const SizedBox(height: 25),
+                    const SizedBox(height: 20),
 
-                  // Palabras clave + botón editar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '# Palabras Claves',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _textoPrincipal,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditarPalabrasClaveScreen(
-                                palabrasClaveActuales: palabrasClave,
-                              ),
-                            ),
-                          );
-
-                          // Si result es true, significa que hubo cambios
-                          if (result == true) {
-                            _fetchPerfilData();
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                    // Datos usuario
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipOval(
+                          child: Container(
+                            width: 70,
+                            height: 70,
+                            color: surfaceColor,
+                            child: (fotoPerfil != null && fotoPerfil.isNotEmpty)
+                                ? Image.network(
+                                    fotoPerfil,
+                                    fit: BoxFit.cover,
+                                    headers: {
+                                      'Authorization': 'Bearer ${token ?? ""}',
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(
+                                        Icons.person,
+                                        size: 35,
+                                        color: textoTerciario,
+                                      );
+                                    },
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                          strokeWidth: 2,
+                                          color: primaryColor,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Icon(
+                                    Icons.person,
+                                    size: 35,
+                                    color: textoTerciario,
+                                  ),
                           ),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: _aspirantePrimario,
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.edit,
-                                color: _aspirantePrimario,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
                               Text(
-                                'Editar',
+                                nombre,
                                 style: TextStyle(
-                                  color: _aspirantePrimario,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: textoPrincipal,
                                 ),
+                              ),
+                              Text(
+                                profesion,
+                                style: TextStyle(color: textoSecundario),
+                              ),
+                              Text(
+                                ubicacion,
+                                style: TextStyle(color: textoSecundario),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
 
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 25),
 
-                  // Chips
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: palabrasClave.isNotEmpty
-                        ? palabrasClave
-                            .map((e) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
+                    // Palabras clave + botón editar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '# Palabras Claves',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: textoPrincipal,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditarPalabrasClaveScreen(
+                                  palabrasClaveActuales: palabrasClave,
+                                ),
+                              ),
+                            );
+
+                            if (result == true) {
+                              _fetchPerfilData();
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: primaryColor,
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.edit,
+                                  color: primaryColor,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Editar',
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: _aspirantePrimario,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    e,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Chips
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: palabrasClave.isNotEmpty
+                          ? palabrasClave
+                              .map((e) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
                                     ),
-                                  ),
-                                ))
-                            .toList()
-                        : [
-                            Text(
-                              'Sin palabras clave',
-                              style: TextStyle(color: _textoTerciario),
-                            )
-                          ],
-                  ),
-                ],
+                                    decoration: BoxDecoration(
+                                      color: primaryColor,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      e,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ))
+                              .toList()
+                          : [
+                              Text(
+                                'Sin palabras clave',
+                                style: TextStyle(color: textoTerciario),
+                              )
+                            ],
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 25),
+              const SizedBox(height: 25),
 
-            // OPCIONES DE PERFIL
-            _buildProfileOption('Datos básicos', context),
-            _buildProfileOption('Correo electrónico', context),
-            _buildProfileOption('Número de teléfono', context),
-            _buildProfileOption('Mi CV', context),
-            _buildProfileOption('Competencia y habilidades', context),
-            _buildProfileOption('Portafolio', context),
-            _buildProfileOption('Configuración general', context),
-            _buildProfileOption('Cerrar sesión', context),
-          ],
+              // OPCIONES DE PERFIL
+              _buildProfileOption(
+                  'Datos básicos', context, primaryColor, textoPrincipal),
+              _buildProfileOption(
+                  'Correo electrónico', context, primaryColor, textoPrincipal),
+              _buildProfileOption(
+                  'Número de teléfono', context, primaryColor, textoPrincipal),
+              _buildProfileOption(
+                  'Cambiar contraseña', context, primaryColor, textoPrincipal),
+              _buildProfileOption(
+                  'Mi CV', context, primaryColor, textoPrincipal),
+              _buildProfileOption('Competencia y habilidades', context,
+                  primaryColor, textoPrincipal),
+              _buildProfileOption(
+                  'Portafolio', context, primaryColor, textoPrincipal),
+              _buildProfileOption(
+                  'Eliminar cuenta', context, primaryColor, textoPrincipal),
+              _buildProfileOption(
+                  'Cerrar sesión', context, primaryColor, textoPrincipal),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileOption(String title, BuildContext context) {
+  Widget _buildProfileOption(
+    String title,
+    BuildContext context,
+    Color borderColor,
+    Color textColor,
+  ) {
     final correo =
         perfilData!['email'] ?? perfilData!['correoAcceso'] ?? 'Sin correo';
 
@@ -505,12 +545,14 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
           _navigateTo(CorreoElectronicoScreen(email: correo));
         } else if (title == 'Número de teléfono') {
           _navigateTo(const TelefonoScreen());
+        } else if (title == 'Cambiar contraseña') {
+          _navigateTo(const CambiarContrasenaScreen());
         } else if (title == 'Mi CV') {
           _navigateTo(const MiCVScreen());
         } else if (title == 'Competencia y habilidades') {
           _navigateTo(const CompetenciasScreen());
-        } else if (title == 'Configuración general') {
-          _navigateTo(const ConfiguracionGeneralScreen());
+        } else if (title == 'Portafolio') {
+          _navigateTo(const PortafolioScreen());
         }
       },
       child: Container(
@@ -518,7 +560,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
         decoration: BoxDecoration(
-          border: Border.all(color: _aspirantePrimario),
+          border: Border.all(color: borderColor),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
@@ -526,7 +568,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: _textoPrincipal,
+            color: textColor,
           ),
         ),
       ),

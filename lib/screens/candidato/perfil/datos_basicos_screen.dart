@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '/../config/theme.dart';
+import 'package:swallow_app/config/paleta_colores.dart';
 import 'package:swallow_app/services/storage_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -72,7 +72,7 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
           nombreController.text = perfilData!['nombres'] ?? '';
           apellidoController.text = perfilData!['apellidos'] ?? '';
           cedulaController.text = perfilData!['documento'] ?? '';
-          cargoController.text = perfilData!['HabilidadPrincipal'] ?? '';
+          cargoController.text = perfilData!['profesion'] ?? 'Sin profesión';
           ubicacionController.text = perfilData!['ubicacion'] ?? '';
 
           imagenFavoritaUrl = perfilData!['fotoPerfil'];
@@ -94,6 +94,9 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
       final source = await showDialog<ImageSource>(
         context: context,
         builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('Seleccionar imagen'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -124,12 +127,12 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
         final bytes = await image.readAsBytes();
         setState(() {
           nuevaImagenBytes = bytes;
-          nuevaImagen = null; // Limpiar File para web
+          nuevaImagen = null;
         });
       } else {
         setState(() {
           nuevaImagen = File(image.path);
-          nuevaImagenBytes = null; // Limpiar bytes para móvil
+          nuevaImagenBytes = null;
         });
       }
     } catch (e) {
@@ -153,7 +156,6 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
 
       request.headers['Authorization'] = 'Bearer $token';
 
-      // Leer los bytes de la imagen (funciona para web y móvil)
       final bytes = await image.readAsBytes();
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -163,8 +165,8 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
         ),
       );
 
-      request.fields['favorita'] = 'true'; // ← Marcar como favorita
-      request.fields['categoria'] = '1'; // ← 1 = PERFIL
+      request.fields['favorita'] = 'true';
+      request.fields['categoria'] = '1';
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
@@ -267,7 +269,6 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
         throw Exception('Token o ID de usuario no disponibles');
       }
 
-      // Validaciones básicas
       if (nombreController.text.trim().isEmpty) {
         throw Exception('El nombre es obligatorio');
       }
@@ -280,12 +281,14 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
         throw Exception('El documento es obligatorio');
       }
 
-      // Construir el body
       final body = {
         'documento': cedulaController.text.trim(),
         'nombres': nombreController.text.trim(),
         'apellidos': apellidoController.text.trim(),
         'idUbicacion': idUbicacionOriginal,
+        'profesion': cargoController.text.trim().isEmpty
+            ? null
+            : cargoController.text.trim(),
       };
 
       final response = await http.patch(
@@ -315,16 +318,25 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
     }
   }
 
-  Widget _buildUbicacionInput() {
+  Widget _buildUbicacionInput(bool isDark, ColorScheme colors) {
+    final primaryColor = colors.primary;
+    final textColor =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final backgroundColor =
+        isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final surfaceColor = isDark ? Colors.grey[800] : Colors.grey[50];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Ubicación',
           style: TextStyle(
             fontWeight: FontWeight.w500,
             fontSize: 14,
-            color: Colors.black,
+            color: textColor,
           ),
         ),
         const SizedBox(height: 6),
@@ -333,24 +345,24 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
           focusNode: ubicacionFocusNode,
           readOnly: !isEditing,
           onChanged: isEditing ? _onUbicacionChanged : null,
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: textColor,
             fontSize: 14,
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: isEditing ? Colors.white : Colors.grey[50],
+            fillColor: isEditing ? backgroundColor : surfaceColor,
             hintText: isEditing ? 'Ej: Bogotá, Medellín...' : null,
-            hintStyle: const TextStyle(color: Colors.grey),
+            hintStyle: TextStyle(color: secondaryTextColor),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.lightPrimary),
-              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: primaryColor),
+              borderRadius: BorderRadius.circular(12),
             ),
             focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.lightPrimary, width: 1.5),
-              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: primaryColor, width: 2),
+              borderRadius: BorderRadius.circular(12),
             ),
             suffixIcon: isEditing
                 ? Row(
@@ -358,8 +370,8 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                     children: [
                       if (ubicacionController.text.isNotEmpty)
                         IconButton(
-                          icon: const Icon(Icons.clear,
-                              size: 18, color: Colors.grey),
+                          icon: Icon(Icons.clear,
+                              size: 18, color: secondaryTextColor),
                           onPressed: () {
                             ubicacionController.clear();
                             setState(() {
@@ -369,8 +381,8 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                             });
                           },
                         ),
-                      const Icon(Icons.location_on,
-                          size: 18, color: Colors.grey),
+                      Icon(Icons.location_on,
+                          size: 18, color: secondaryTextColor),
                       const SizedBox(width: 8),
                     ],
                   )
@@ -382,9 +394,9 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
             margin: const EdgeInsets.only(top: 4),
             constraints: const BoxConstraints(maxHeight: 200),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.lightPrimary, width: 1.5),
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: primaryColor, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
@@ -402,7 +414,7 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                 separatorBuilder: (context, index) => Divider(
                   height: 1,
                   thickness: 1,
-                  color: Colors.grey[300],
+                  color: isDark ? Colors.grey[700] : Colors.grey[300],
                   indent: 16,
                   endIndent: 16,
                 ),
@@ -422,16 +434,16 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                         children: [
                           Icon(
                             Icons.location_on,
-                            color: AppTheme.lightPrimary,
+                            color: primaryColor,
                             size: 20,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               ubicacion['nombre'] ?? 'Sin nombre',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.black,
+                                color: textColor,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -452,7 +464,6 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
     try {
       bool cambiosRealizados = false;
 
-      // 1. Actualizar foto si cambió
       if (nuevaImagen != null || nuevaImagenBytes != null) {
         XFile? xfile;
         if (kIsWeb && nuevaImagenBytes != null) {
@@ -470,17 +481,23 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
         }
       }
 
-      // 2. Actualizar datos personales
       await _actualizarDatosPersonales();
       cambiosRealizados = true;
 
-      // 3. Recargar datos
       await _cargarDatos();
 
       setState(() {
         isEditing = false;
         nuevaImagen = null;
         nuevaImagenBytes = null;
+
+        if (perfilData != null) {
+          nombreController.text = perfilData!['nombres'] ?? '';
+          apellidoController.text = perfilData!['apellidos'] ?? '';
+          cedulaController.text = perfilData!['documento'] ?? '';
+          cargoController.text = perfilData!['profesion'] ?? '';
+          ubicacionController.text = perfilData!['ubicacion'] ?? '';
+        }
       });
 
       if (cambiosRealizados && mounted) {
@@ -508,44 +525,56 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final primaryColor = colors.primary;
+    final backgroundColor =
+        isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textColor =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final surfaceColor = isDark ? Colors.grey[800] : Colors.grey[50];
+
     if (isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Datos Básicos',
               style: TextStyle(
-                color: Colors.black,
+                color: textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             Text(
               'Información personal y profesional',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(color: secondaryTextColor, fontSize: 13),
             ),
           ],
         ),
         actions: [
-          // Botón cambia entre Editar y Guardar
           if (!isEditing)
             IconButton(
-              icon: const Icon(Icons.edit_outlined, color: Colors.black),
+              icon: Icon(Icons.edit_outlined, color: textColor),
               onPressed: () {
                 setState(() => isEditing = true);
               },
@@ -555,21 +584,20 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
               children: [
                 TextButton(
                   onPressed: () {
-                    // Cancelar y recargar datos originales
                     setState(() => isEditing = false);
                     _cargarDatos();
                   },
-                  child: const Text(
+                  child: Text(
                     'Cancelar',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: secondaryTextColor),
                   ),
                 ),
                 TextButton(
                   onPressed: _guardarCambios,
-                  child: const Text(
+                  child: Text(
                     'Guardar',
                     style: TextStyle(
-                      color: AppTheme.lightPrimary,
+                      color: primaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -586,20 +614,19 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.lightPrimary),
+                border: Border.all(color: primaryColor),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.camera_alt_outlined,
-                          color: AppTheme.lightPrimary),
+                      Icon(Icons.camera_alt_outlined, color: primaryColor),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Foto de Perfil',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: textColor,
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),
@@ -615,7 +642,7 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                           child: Container(
                             width: 90,
                             height: 90,
-                            color: AppTheme.lightSecondary.withOpacity(0.3),
+                            color: primaryColor.withOpacity(0.1),
                             child: kIsWeb
                                 ? (nuevaImagenBytes != null
                                     ? Image.memory(
@@ -633,12 +660,10 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                                             },
                                             errorBuilder:
                                                 (context, error, stackTrace) {
-                                              print(
-                                                  'Error cargando imagen: $error');
-                                              return const Icon(
+                                              return Icon(
                                                 Icons.person,
                                                 size: 45,
-                                                color: Colors.grey,
+                                                color: secondaryTextColor,
                                               );
                                             },
                                             loadingBuilder: (context, child,
@@ -657,15 +682,15 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                                                               .expectedTotalBytes!
                                                       : null,
                                                   strokeWidth: 2,
-                                                  color: AppTheme.lightPrimary,
+                                                  color: primaryColor,
                                                 ),
                                               );
                                             },
                                           )
-                                        : const Icon(
+                                        : Icon(
                                             Icons.person,
                                             size: 45,
-                                            color: Colors.grey,
+                                            color: secondaryTextColor,
                                           ))
                                 : (nuevaImagen != null
                                     ? Image.file(
@@ -683,12 +708,10 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                                             },
                                             errorBuilder:
                                                 (context, error, stackTrace) {
-                                              print(
-                                                  'Error cargando imagen: $error');
-                                              return const Icon(
+                                              return Icon(
                                                 Icons.person,
                                                 size: 45,
-                                                color: Colors.grey,
+                                                color: secondaryTextColor,
                                               );
                                             },
                                             loadingBuilder: (context, child,
@@ -707,15 +730,15 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                                                               .expectedTotalBytes!
                                                       : null,
                                                   strokeWidth: 2,
-                                                  color: AppTheme.lightPrimary,
+                                                  color: primaryColor,
                                                 ),
                                               );
                                             },
                                           )
-                                        : const Icon(
+                                        : Icon(
                                             Icons.person,
                                             size: 45,
-                                            color: Colors.grey,
+                                            color: secondaryTextColor,
                                           )),
                           ),
                         ),
@@ -726,7 +749,7 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: AppTheme.lightPrimary,
+                                color: primaryColor,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -742,68 +765,66 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
                   const SizedBox(height: 8),
                   Text(
                     isEditing ? 'Toca para cambiar' : '',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(color: secondaryTextColor, fontSize: 12),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // INFORMACIÓN PERSONAL
             _buildSection(
               icon: Icons.person_outline,
               title: 'Información Personal',
+              isDark: isDark,
+              colors: colors,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInput('Nombres', nombreController, enabled: isEditing),
+                  _buildInput('Nombres', nombreController,
+                      enabled: isEditing, isDark: isDark, colors: colors),
                   const SizedBox(height: 10),
                   _buildInput('Apellidos', apellidoController,
-                      enabled: isEditing),
+                      enabled: isEditing, isDark: isDark, colors: colors),
                   const SizedBox(height: 10),
                   _buildInput('Número de Cédula', cedulaController,
-                      enabled: isEditing),
+                      enabled: isEditing, isDark: isDark, colors: colors),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // INFORMACIÓN PROFESIONAL
             _buildSection(
               icon: Icons.work_outline,
               title: 'Información Profesional',
+              isDark: isDark,
+              colors: colors,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInput('Profesión/Cargo', cargoController,
-                      enabled: false),
+                      enabled: isEditing, isDark: isDark, colors: colors),
                   const SizedBox(height: 10),
-                  _buildUbicacionInput(), 
+                  _buildUbicacionInput(isDark, colors),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // TEXTO INFORMATIVO
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.lightPrimary),
+                border: Border.all(color: primaryColor),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, color: Colors.blue),
+                  Icon(Icons.info_outline, color: primaryColor),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Estos datos son utilizados únicamente para procesos de verificación y contacto relacionados con oportunidades laborales. Tu información está protegida según nuestras políticas de privacidad.',
                       style: TextStyle(
-                          color: Colors.grey[800], fontSize: 13.5, height: 1.4),
+                          color: secondaryTextColor,
+                          fontSize: 13.5,
+                          height: 1.4),
                     ),
                   ),
                 ],
@@ -819,12 +840,18 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
     required IconData icon,
     required String title,
     required Widget child,
+    required bool isDark,
+    required ColorScheme colors,
   }) {
+    final primaryColor = colors.primary;
+    final textColor =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.lightPrimary),
+        border: Border.all(color: primaryColor),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -832,14 +859,14 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppTheme.lightPrimary),
+              Icon(icon, color: primaryColor),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
-                  color: Colors.black,
+                  color: textColor,
                 ),
               ),
             ],
@@ -851,42 +878,56 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
     );
   }
 
-  Widget _buildInput(String label, TextEditingController controller,
-      {bool enabled = false}) {
+  Widget _buildInput(
+    String label,
+    TextEditingController controller, {
+    bool enabled = false,
+    required bool isDark,
+    required ColorScheme colors,
+  }) {
+    final primaryColor = colors.primary;
+    final textColor =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final backgroundColor =
+        isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final surfaceColor = isDark ? Colors.grey[800] : Colors.grey[50];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w500,
             fontSize: 14,
-            color: Colors.black,
+            color: textColor,
           ),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
           readOnly: !enabled,
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: textColor,
             fontSize: 14,
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: enabled ? Colors.white : Colors.grey[50],
+            fillColor: enabled ? backgroundColor : surfaceColor,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.lightPrimary),
-              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: primaryColor),
+              borderRadius: BorderRadius.circular(12),
             ),
             focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.lightPrimary, width: 1.5),
-              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: primaryColor, width: 2),
+              borderRadius: BorderRadius.circular(12),
             ),
             suffixIcon: enabled
-                ? const Icon(Icons.edit, size: 18, color: Colors.grey)
+                ? Icon(Icons.edit, size: 18, color: secondaryTextColor)
                 : null,
           ),
         ),
@@ -901,6 +942,7 @@ class _DatosBasicosScreenState extends State<DatosBasicosScreen> {
     cedulaController.dispose();
     cargoController.dispose();
     ubicacionController.dispose();
+    ubicacionFocusNode.dispose();
     super.dispose();
   }
 }

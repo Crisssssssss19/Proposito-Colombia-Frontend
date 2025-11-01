@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:swallow_app/services/storage_service.dart';
+import 'package:swallow_app/config/paleta_colores.dart';
 
 class EditarPalabrasClaveScreen extends StatefulWidget {
   final List<String> palabrasClaveActuales;
@@ -21,15 +22,6 @@ class _EditarPalabrasClaveScreenState
   final TextEditingController _keywordController = TextEditingController();
   late List<String> _keywords;
   bool _isSaving = false;
-
-  // Colores oficiales - Aspirante
-  static const Color _aspirantePrimario = Color(0xFF1A43FF);
-  static const Color _fondoPrincipal = Color(0xFFFFFFFF);
-  static const Color _textoPrincipal = Color(0xFF1E293B);
-  static const Color _textoSecundario = Color(0xFF475569);
-  static const Color _textoTerciario = Color(0xFF667388);
-  static const Color _superficie = Color(0xFFFAFAFA);
-  static const Color _fondoAzul2 = Color(0xFFE6F0FA);
 
   @override
   void initState() {
@@ -98,7 +90,6 @@ class _EditarPalabrasClaveScreenState
   }
 
   Future<void> _guardarCambios() async {
-    // Verificar si hubo cambios
     bool huboChangios = _keywords.length != widget.palabrasClaveActuales.length ||
         !_keywords.every((k) => widget.palabrasClaveActuales.contains(k));
 
@@ -107,7 +98,6 @@ class _EditarPalabrasClaveScreenState
       return;
     }
 
-    // Confirmar si va a eliminar todas
     if (_keywords.isEmpty && widget.palabrasClaveActuales.isNotEmpty) {
       final confirmar = await showDialog<bool>(
         context: context,
@@ -173,7 +163,7 @@ class _EditarPalabrasClaveScreenState
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context, true); // true = hubo cambios
+          Navigator.pop(context, true);
         }
       } else {
         throw Exception('Error al guardar (${response.statusCode})');
@@ -196,19 +186,33 @@ class _EditarPalabrasClaveScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final primaryColor = colors.primary;
+    
+    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textoPrincipal = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textoSecundario = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textoTerciario = isDark 
+        ? const Color(0xFF7D8CA1)
+        : const Color(0xFF667388);
+    final fondoAzul2 = isDark 
+        ? const Color(0xFF152238) // darkBackgroundSecondary
+        : const Color(0xFFE6F0FA);
+
     return Scaffold(
-      backgroundColor: _fondoPrincipal,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: _fondoPrincipal,
+        backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textoPrincipal),
+          icon: Icon(Icons.arrow_back, color: textoPrincipal),
           onPressed: () => Navigator.pop(context, false),
         ),
-        title: const Text(
+        title: Text(
           'Palabras Clave',
           style: TextStyle(
-            color: _textoPrincipal,
+            color: textoPrincipal,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -223,11 +227,10 @@ class _EditarPalabrasClaveScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Subtítulo
                   Text(
                     'Gestiona tus habilidades y tecnologías',
                     style: TextStyle(
-                      color: _textoSecundario,
+                      color: textoSecundario,
                       fontSize: 14,
                     ),
                   ),
@@ -237,8 +240,8 @@ class _EditarPalabrasClaveScreenState
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _fondoPrincipal,
-                      border: Border.all(color: _aspirantePrimario, width: 1),
+                      color: backgroundColor,
+                      border: Border.all(color: primaryColor, width: 1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -247,13 +250,14 @@ class _EditarPalabrasClaveScreenState
                         Row(
                           children: [
                             Icon(Icons.add_circle_outline,
-                                color: _aspirantePrimario, size: 20),
+                                color: primaryColor, size: 20),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               'Agregar Palabra Clave',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                color: textoPrincipal,
                               ),
                             ),
                           ],
@@ -262,7 +266,7 @@ class _EditarPalabrasClaveScreenState
                         Text(
                           'Nueva habilidad o tecnología',
                           style: TextStyle(
-                            color: _textoSecundario,
+                            color: textoSecundario,
                             fontSize: 14,
                           ),
                         ),
@@ -272,12 +276,12 @@ class _EditarPalabrasClaveScreenState
                             Expanded(
                               child: TextField(
                                 controller: _keywordController,
-                                style: const TextStyle(color: _textoPrincipal),
+                                style: TextStyle(color: textoPrincipal),
                                 textCapitalization: TextCapitalization.words,
                                 onSubmitted: (_) => _agregarPalabraClave(),
                                 decoration: InputDecoration(
                                   hintText: 'Ej: React, Python, Diseño UX',
-                                  hintStyle: TextStyle(color: _textoTerciario),
+                                  hintStyle: TextStyle(color: textoTerciario),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                     vertical: 12,
@@ -285,15 +289,22 @@ class _EditarPalabrasClaveScreenState
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                      color: _aspirantePrimario,
+                                      color: primaryColor,
                                       width: 1.5,
                                     ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                      color: _aspirantePrimario,
+                                      color: primaryColor,
                                       width: 2,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: primaryColor,
+                                      width: 1.5,
                                     ),
                                   ),
                                 ),
@@ -303,7 +314,7 @@ class _EditarPalabrasClaveScreenState
                             ElevatedButton(
                               onPressed: _agregarPalabraClave,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _aspirantePrimario,
+                                backgroundColor: primaryColor,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -324,19 +335,19 @@ class _EditarPalabrasClaveScreenState
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: _fondoAzul2,
+                            color: fondoAzul2,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             children: [
                               Icon(Icons.lightbulb_outline,
-                                  color: _textoSecundario, size: 18),
+                                  color: textoSecundario, size: 18),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Las palabras clave ayudan a los empleadores a encontrar tu perfil cuando buscan candidatos con habilidades específicas.',
                                   style: TextStyle(
-                                    color: _textoSecundario,
+                                    color: textoSecundario,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -354,8 +365,8 @@ class _EditarPalabrasClaveScreenState
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _fondoPrincipal,
-                      border: Border.all(color: _aspirantePrimario, width: 1),
+                      color: backgroundColor,
+                      border: Border.all(color: primaryColor, width: 1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -367,14 +378,14 @@ class _EditarPalabrasClaveScreenState
                             Row(
                               children: [
                                 Icon(Icons.tag,
-                                    color: _aspirantePrimario, size: 20),
+                                    color: primaryColor, size: 20),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Mis Palabras Clave',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
-                                    color: _textoPrincipal,
+                                    color: textoPrincipal,
                                   ),
                                 ),
                               ],
@@ -385,13 +396,13 @@ class _EditarPalabrasClaveScreenState
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: _aspirantePrimario.withOpacity(0.1),
+                                color: primaryColor.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 '${_keywords.length}',
                                 style: TextStyle(
-                                  color: _aspirantePrimario,
+                                  color: primaryColor,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
@@ -409,13 +420,13 @@ class _EditarPalabrasClaveScreenState
                                       Icon(
                                         Icons.label_off_outlined,
                                         size: 48,
-                                        color: _textoTerciario,
+                                        color: textoTerciario,
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
                                         'No hay palabras clave',
                                         style: TextStyle(
-                                          color: _textoTerciario,
+                                          color: textoTerciario,
                                           fontSize: 16,
                                         ),
                                       ),
@@ -423,7 +434,7 @@ class _EditarPalabrasClaveScreenState
                                       Text(
                                         'Agrega al menos 3 para mejorar tu perfil',
                                         style: TextStyle(
-                                          color: _textoTerciario,
+                                          color: textoTerciario,
                                           fontSize: 12,
                                         ),
                                         textAlign: TextAlign.center,
@@ -451,7 +462,7 @@ class _EditarPalabrasClaveScreenState
                                     ),
                                     onDeleted: () =>
                                         _eliminarPalabraClave(word),
-                                    backgroundColor: _aspirantePrimario,
+                                    backgroundColor: primaryColor,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
@@ -467,11 +478,11 @@ class _EditarPalabrasClaveScreenState
             ),
           ),
 
-          // Botón guardar (fijo abajo)
+          // Botón guardar
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _fondoPrincipal,
+              color: backgroundColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -486,7 +497,7 @@ class _EditarPalabrasClaveScreenState
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _guardarCambios,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _aspirantePrimario,
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 52),
                     shape: RoundedRectangleBorder(

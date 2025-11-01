@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:swallow_app/config/theme.dart';
+import 'package:swallow_app/config/paleta_colores.dart';
 import 'package:swallow_app/services/storage_service.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -128,7 +128,7 @@ class _MiCVScreenState extends State<MiCVScreen> {
         throw Exception('Error al subir el CV (${response.statusCode})');
       }
     } catch (e) {
-      print('❌ Error subiendo CV: $e');
+      print('Error subiendo CV: $e');
       _mostrarError('Error al subir el CV: ${e.toString().replaceFirst('Exception: ', '')}');
       setState(() => isLoading = false);
     }
@@ -146,7 +146,6 @@ class _MiCVScreenState extends State<MiCVScreen> {
       final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
       final url = 'http://localhost:3210/usuarios/$userId/archivos/$archivoId/descargar';
 
-      // Caso Flutter Web
       if (kIsWeb) {
         final response = await http.get(
           Uri.parse(url),
@@ -163,8 +162,6 @@ class _MiCVScreenState extends State<MiCVScreen> {
         return;
       }
 
-      // Caso Móvil (Android/iOS)
-      // Solicitar permisos
       if (Platform.isAndroid) {
         final status = await Permission.storage.request();
         if (!status.isGranted) {
@@ -176,7 +173,6 @@ class _MiCVScreenState extends State<MiCVScreen> {
       final dio = Dio();
       dio.options.headers['Authorization'] = 'Bearer $token';
 
-      // Directorio de descargas
       Directory? directory;
       if (Platform.isAndroid) {
         directory = Directory('/storage/emulated/0/Download');
@@ -196,10 +192,12 @@ class _MiCVScreenState extends State<MiCVScreen> {
       
       _mostrarExito('Descargado: $nombreArchivo');
 
-      // Preguntar si quiere abrir
       final abrir = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('Descarga completa'),
           content: Text('¿Deseas abrir $nombreArchivo?'),
           actions: [
@@ -219,7 +217,7 @@ class _MiCVScreenState extends State<MiCVScreen> {
         await OpenFile.open(filePath);
       }
     } catch (e) {
-      print('❌ Error descargando CV: $e');
+      print('Error descargando CV: $e');
       _mostrarError('Error al descargar el CV');
     }
   }
@@ -250,7 +248,6 @@ class _MiCVScreenState extends State<MiCVScreen> {
         return;
       }
 
-      // 🔹 Caso Móvil
       final dio = Dio();
       dio.options.headers['Authorization'] = 'Bearer $token';
 
@@ -304,17 +301,28 @@ class _MiCVScreenState extends State<MiCVScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final primaryColor = colors.primary;
+    
+    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textoPrincipal = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textoSecundario = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final borderColor = isDark ? Colors.grey[700] : Colors.grey[300];
+
     if (isLoading) {
       return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(),
-        body: const Center(child: CircularProgressIndicator()),
+        backgroundColor: backgroundColor,
+        appBar: _buildAppBar(isDark, textoPrincipal),
+        body: Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
+      backgroundColor: backgroundColor,
+      appBar: _buildAppBar(isDark, textoPrincipal),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
@@ -324,40 +332,45 @@ class _MiCVScreenState extends State<MiCVScreen> {
             Text(
               "Gestiona tu currículum vitae",
               style: TextStyle(
-                color: Colors.grey[700],
+                color: textoSecundario,
                 fontSize: 16,
               ),
             ),
             const SizedBox(height: 25),
 
-            if (cvActual != null) _buildCVCard() else _buildNoCVCard(),
+            if (cvActual != null)
+              _buildCVCard(isDark, primaryColor, textoPrincipal, textoSecundario)
+            else
+              _buildNoCVCard(isDark, textoPrincipal, textoSecundario, borderColor!),
 
             const SizedBox(height: 25),
 
-            _buildActionButtons(),
+            _buildActionButtons(isDark, primaryColor, textoPrincipal),
 
             const SizedBox(height: 25),
 
-            _buildRecommendationCard(),
+            _buildRecommendationCard(isDark, primaryColor, textoPrincipal, textoSecundario),
           ],
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(bool isDark, Color textColor) {
+    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+        icon: Icon(Icons.arrow_back_ios, color: textColor),
         onPressed: () => Navigator.pop(context),
       ),
       centerTitle: true,
-      title: const Text(
+      title: Text(
         "Mi CV",
         style: TextStyle(
-          color: Colors.black,
+          color: textColor,
           fontWeight: FontWeight.w600,
           fontSize: 20,
         ),
@@ -365,7 +378,12 @@ class _MiCVScreenState extends State<MiCVScreen> {
     );
   }
 
-  Widget _buildCVCard() {
+  Widget _buildCVCard(
+    bool isDark,
+    Color primaryColor,
+    Color textoPrincipal,
+    Color textoSecundario,
+  ) {
     final nombreArchivo = cvActual!['nombrePublico'] ?? 'CV.pdf';
     final tamanio = cvActual!['tamanio'] ?? 'Tamaño desconocido';
     final fechaSubida = cvActual!['fechaSubida'];
@@ -373,8 +391,8 @@ class _MiCVScreenState extends State<MiCVScreen> {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.lightPrimary),
-        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: primaryColor),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -390,8 +408,8 @@ class _MiCVScreenState extends State<MiCVScreen> {
               children: [
                 Text(
                   nombreArchivo,
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: textoPrincipal,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -402,12 +420,12 @@ class _MiCVScreenState extends State<MiCVScreen> {
                   fechaSubida != null
                       ? 'Subido el ${_formatFecha(fechaSubida)}'
                       : 'Fecha no disponible',
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: textoSecundario),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '$tamanio · PDF',
-                  style: const TextStyle(color: Colors.grey),
+                  style: TextStyle(color: textoSecundario),
                 ),
               ],
             ),
@@ -417,10 +435,10 @@ class _MiCVScreenState extends State<MiCVScreen> {
             icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
             label: const Text("Ver"),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.lightPrimary,
+              backgroundColor: primaryColor,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           )
@@ -429,37 +447,48 @@ class _MiCVScreenState extends State<MiCVScreen> {
     );
   }
 
-  Widget _buildNoCVCard() {
+  Widget _buildNoCVCard(
+    bool isDark,
+    Color textoPrincipal,
+    Color textoSecundario,
+    Color borderColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          Icon(Icons.upload_file, size: 60, color: Colors.grey[400]),
+          Icon(Icons.upload_file, size: 60, color: textoSecundario),
           const SizedBox(height: 10),
           Text(
             'No has subido tu CV',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
+              color: textoPrincipal,
             ),
           ),
           const SizedBox(height: 5),
           Text(
             'Sube tu currículum para postularte a ofertas',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[600]),
+            style: TextStyle(color: textoSecundario),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(
+    bool isDark,
+    Color primaryColor,
+    Color textoPrincipal,
+  ) {
+    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -469,11 +498,11 @@ class _MiCVScreenState extends State<MiCVScreen> {
             icon: const Icon(Icons.upload_file),
             label: Text(cvActual != null ? "Actualizar CV" : "Subir CV"),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.lightPrimary,
+              backgroundColor: primaryColor,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
@@ -486,12 +515,12 @@ class _MiCVScreenState extends State<MiCVScreen> {
               icon: const Icon(Icons.download),
               label: const Text("Descargar"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
+                backgroundColor: backgroundColor,
+                foregroundColor: textoPrincipal,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                side: BorderSide(color: AppTheme.lightPrimary),
+                side: BorderSide(color: primaryColor),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -501,36 +530,41 @@ class _MiCVScreenState extends State<MiCVScreen> {
     );
   }
 
-  Widget _buildRecommendationCard() {
+  Widget _buildRecommendationCard(
+    bool isDark,
+    Color primaryColor,
+    Color textoPrincipal,
+    Color textoSecundario,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.lightPrimary),
-        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: primaryColor),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline, color: Colors.blue, size: 22),
+          Icon(Icons.info_outline, color: primaryColor, size: 22),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Recomendación",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
-                    color: Colors.black,
+                    color: textoPrincipal,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   "Mantén tu CV actualizado para mejorar tus oportunidades de encontrar el trabajo ideal. Formato PDF, máximo 5MB.",
                   style: TextStyle(
-                    color: Colors.grey[700],
+                    color: textoSecundario,
                     fontSize: 14,
                   ),
                 ),
