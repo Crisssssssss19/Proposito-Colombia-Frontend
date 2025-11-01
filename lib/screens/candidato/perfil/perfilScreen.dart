@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:swallow_app/config/theme.dart';
 import 'package:swallow_app/screens/candidato/perfil/configuracion_general_screen.dart';
 import 'package:swallow_app/screens/candidato/perfil/datos_basicos_screen.dart';
 import 'package:swallow_app/screens/candidato/perfil/correo_electronico_screen.dart';
@@ -7,6 +6,7 @@ import 'package:swallow_app/screens/candidato/perfil/telefono_screen.dart';
 import 'package:swallow_app/screens/candidato/perfil/MiCVScreen.dart';
 import 'package:swallow_app/screens/candidato/perfil/habilidades_competencias_screen.dart';
 import 'package:swallow_app/screens/candidato/perfil/portafolioScreen.dart';
+import 'package:swallow_app/screens/candidato/perfil/editar_palabras_clave_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:swallow_app/services/storage_service.dart';
@@ -44,6 +44,14 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   Map<String, dynamic>? perfilData;
   bool isLoading = true;
   String? token;
+
+  // Colores oficiales - Aspirante
+  static const Color _aspirantePrimario = Color(0xFF1A43FF);
+  static const Color _fondoPrincipal = Color(0xFFFFFFFF);
+  static const Color _textoPrincipal = Color(0xFF1E293B);
+  static const Color _textoSecundario = Color(0xFF475569);
+  static const Color _textoTerciario = Color(0xFF667388);
+  static const Color _fondoAzul2 = Color(0xFFE6F0FA);
 
   @override
   void initState() {
@@ -84,71 +92,61 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
     if (perfilData == null) return 0.0;
 
     int camposCompletados = 0;
-    int totalCampos = 11; // Total de campos a evaluar
+    int totalCampos = 11;
 
-    // 1. Nombres (obligatorio - ya existe)
     if (perfilData!['nombres'] != null &&
         perfilData!['nombres'].toString().isNotEmpty) {
       camposCompletados++;
     }
 
-    // 2. Apellidos (obligatorio - ya existe)
     if (perfilData!['apellidos'] != null &&
         perfilData!['apellidos'].toString().isNotEmpty) {
       camposCompletados++;
     }
 
-    // 3. Email
     if (perfilData!['email'] != null &&
         perfilData!['email'].toString().isNotEmpty) {
       camposCompletados++;
     }
 
-    // 4. Teléfono
     if (perfilData!['telefono'] != null &&
         perfilData!['telefono'].toString().isNotEmpty) {
       camposCompletados++;
     }
 
-    // 5. Ubicación
     if (perfilData!['ubicacion'] != null &&
         perfilData!['ubicacion'].toString().isNotEmpty &&
         perfilData!['ubicacion'] != 'Ubicación no disponible') {
       camposCompletados++;
     }
 
-    // 6. Foto de perfil
     if (perfilData!['fotoPerfil'] != null &&
         perfilData!['fotoPerfil'].toString().isNotEmpty) {
       camposCompletados++;
     }
 
-    // 7. Habilidad principal
-    if (perfilData!['HabilidadPrincipal'] != null &&
-        perfilData!['HabilidadPrincipal'].toString().isNotEmpty &&
-        perfilData!['HabilidadPrincipal'] != 'Sin habilidad principal') {
+    // CAMBIO: Ahora usa 'profesion' en lugar de 'HabilidadPrincipal'
+    if (perfilData!['profesion'] != null &&
+        perfilData!['profesion'].toString().isNotEmpty &&
+        perfilData!['profesion'] != 'Sin profesión') {
       camposCompletados++;
     }
 
-    // 8. Palabras clave (al menos 3)
     final palabrasClave = perfilData!['palabrasClave'] as List?;
     if (palabrasClave != null && palabrasClave.length >= 3) {
       camposCompletados++;
     }
 
-    // 9. Habilidades (al menos 2)
     final habilidades = perfilData!['habilidades'] as List?;
     if (habilidades != null && habilidades.length >= 2) {
       camposCompletados++;
     }
 
-    // 10. CV/Archivos (al menos 1)
     final archivos = perfilData!['archivos'] as List?;
     if (archivos != null && archivos.isNotEmpty) {
       camposCompletados++;
     }
 
-    // 11. Imágenes de portafolio (al menos 3)
     final imagenes = perfilData!['imagenes'] as List?;
     if (imagenes != null && imagenes.length >= 3) {
       camposCompletados++;
@@ -160,8 +158,6 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   Future<void> _fetchPerfilData() async {
     try {
       final storage = StorageService();
-
-      // Obtén el token y el ID guardados al iniciar sesión
       final fetchedToken = await storage.getToken();
       final userId = await storage.getUserId();
 
@@ -196,9 +192,15 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Center(child: CircularProgressIndicator());
-    if (perfilData == null)
+    if (isLoading) {
+      return Center(
+        child: CircularProgressIndicator(color: _aspirantePrimario),
+      );
+    }
+
+    if (perfilData == null) {
       return const Center(child: Text('No se pudo cargar el perfil.'));
+    }
 
     final nombre = '${perfilData!['nombres']} ${perfilData!['apellidos']}';
     final ubicacion = perfilData!['ubicacion'] ?? 'Ubicación no disponible';
@@ -207,25 +209,27 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
             .map((e) => _formatKeyword(e['textoPalabraClave'] as String))
             .toList() ??
         [];
-    final habilidadPrincipal =
-        perfilData!['HabilidadPrincipal'] ?? 'Sin habilidad principal';
+    // CAMBIO: Ahora usa 'profesion' en lugar de 'HabilidadPrincipal'
+    final profesion = perfilData!['profesion'] ?? 'Sin profesión';
     final fotoPerfil = perfilData!['fotoPerfil'];
+
     return RefreshIndicator(
       onRefresh: _fetchPerfilData,
-      color: AppTheme.lightPrimary,
+      color: _aspirantePrimario,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Center(
+            Center(
               child: Text(
                 'Perfil',
                 style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: _textoPrincipal,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -234,8 +238,8 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: AppTheme.lightPrimary, width: 1),
+                color: _fondoPrincipal,
+                border: Border.all(color: _aspirantePrimario, width: 1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -245,17 +249,17 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Completar perfil',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey,
+                          color: _textoSecundario,
                         ),
                       ),
                       Text(
                         '${(_calcularProgresoPerfil() * 100).toInt()}%',
-                        style: const TextStyle(
-                          color: Colors.black,
+                        style: TextStyle(
+                          color: _textoPrincipal,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -266,7 +270,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       value: _calcularProgresoPerfil(),
-                      color: AppTheme.lightPrimary,
+                      color: _aspirantePrimario,
                       backgroundColor: Colors.grey[300],
                       minHeight: 8,
                     ),
@@ -274,8 +278,9 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
 
                   const SizedBox(height: 20),
 
-                  // ---- Datos usuario ---
+                  // Datos usuario
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipOval(
                         child: Container(
@@ -290,11 +295,10 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                                     'Authorization': 'Bearer ${token ?? ""}',
                                   },
                                   errorBuilder: (context, error, stackTrace) {
-                                    print('Error cargando imagen: $error');
-                                    return const Icon(
+                                    return Icon(
                                       Icons.person,
                                       size: 35,
-                                      color: Colors.grey,
+                                      color: _textoTerciario,
                                     );
                                   },
                                   loadingBuilder:
@@ -311,14 +315,15 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                                                     .expectedTotalBytes!
                                             : null,
                                         strokeWidth: 2,
+                                        color: _aspirantePrimario,
                                       ),
                                     );
                                   },
                                 )
-                              : const Icon(
+                              : Icon(
                                   Icons.person,
                                   size: 35,
-                                  color: Colors.grey,
+                                  color: _textoTerciario,
                                 ),
                         ),
                       ),
@@ -329,57 +334,126 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
                           children: [
                             Text(
                               nombre,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: Colors.black,
+                                color: _textoPrincipal,
                               ),
                             ),
+                            // CAMBIO: Muestra 'profesion' en lugar de 'HabilidadPrincipal'
                             Text(
-                              habilidadPrincipal,
-                              style: const TextStyle(color: Colors.grey),
+                              profesion,
+                              style: TextStyle(color: _textoSecundario),
                             ),
                             Text(
                               ubicacion,
-                              style: const TextStyle(color: Colors.grey),
+                              style: TextStyle(color: _textoSecundario),
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 25),
-                  // ---- Palabras clave + botón editar ----
+
+                  // Palabras clave + botón editar
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         '# Palabras Claves',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          color: _textoPrincipal,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.grey),
-                        onPressed: () {
-                          _showEditKeywordsDialog(context, palabrasClave);
+                      InkWell(
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditarPalabrasClaveScreen(
+                                palabrasClaveActuales: palabrasClave,
+                              ),
+                            ),
+                          );
+
+                          // Si result es true, significa que hubo cambios
+                          if (result == true) {
+                            _fetchPerfilData();
+                          }
                         },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: _aspirantePrimario,
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                color: _aspirantePrimario,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Editar',
+                                style: TextStyle(
+                                  color: _aspirantePrimario,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
 
                   const SizedBox(height: 10),
 
-                  // ---- Chips ----
+                  // Chips
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: palabrasClave.isNotEmpty
                         ? palabrasClave
-                            .map((e) => Chip(label: Text(e)))
+                            .map((e) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _aspirantePrimario,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    e,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ))
                             .toList()
-                        : [const Text('Sin palabras clave')],
+                        : [
+                            Text(
+                              'Sin palabras clave',
+                              style: TextStyle(color: _textoTerciario),
+                            )
+                          ],
                   ),
                 ],
               ),
@@ -387,7 +461,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
 
             const SizedBox(height: 25),
 
-            // OPCIONES DE PERFIL ABAJO
+            // OPCIONES DE PERFIL
             _buildProfileOption('Datos básicos', context),
             _buildProfileOption('Correo electrónico', context),
             _buildProfileOption('Número de teléfono', context),
@@ -405,6 +479,7 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
   Widget _buildProfileOption(String title, BuildContext context) {
     final correo =
         perfilData!['email'] ?? perfilData!['correoAcceso'] ?? 'Sin correo';
+
     void _navigateTo(Widget screen) async {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final navigator = PerfilScreen.perfilNavigatorKey.currentState;
@@ -416,7 +491,6 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
         if (title == 'Datos básicos' ||
             title == 'Competencia y habilidades' ||
             title == 'Portafolio' ||
-            title == 'Competencia y habilidades' ||
             title == 'Mi CV') {
           _fetchPerfilData();
         }
@@ -428,15 +502,13 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
         if (title == 'Datos básicos') {
           _navigateTo(const DatosBasicosScreen());
         } else if (title == 'Correo electrónico') {
-          _navigateTo(CorreoElectronicoScreen(email: correo ?? ''));
+          _navigateTo(CorreoElectronicoScreen(email: correo));
         } else if (title == 'Número de teléfono') {
           _navigateTo(const TelefonoScreen());
         } else if (title == 'Mi CV') {
           _navigateTo(const MiCVScreen());
         } else if (title == 'Competencia y habilidades') {
           _navigateTo(const CompetenciasScreen());
-        } else if (title == 'Portafolio') {
-          _navigateTo(const PortafolioScreen());
         } else if (title == 'Configuración general') {
           _navigateTo(const ConfiguracionGeneralScreen());
         }
@@ -446,291 +518,18 @@ class _PerfilMainContentState extends State<PerfilMainContent> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
         decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.lightPrimary),
+          border: Border.all(color: _aspirantePrimario),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: _textoPrincipal,
+          ),
+        ),
       ),
     );
-  }
-
-  void _showEditKeywordsDialog(
-      BuildContext context, List<dynamic> currentKeywords) {
-    final TextEditingController keywordController = TextEditingController();
-    final List<String> keywords =
-        currentKeywords.map((e) => e.toString()).toList();
-    final List<String> keywordsOriginales = List.from(keywords); // ✅ AGREGAR
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              backgroundColor: Colors.white,
-              title: const Center(
-                child: Text(
-                  'Editar Palabras Clave',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Agrega o elimina palabras clave que describan tus habilidades técnicas.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 20),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Agregar nueva palabra clave',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: keywordController,
-                            style: const TextStyle(color: Colors.black),
-                            textCapitalization: TextCapitalization.words,
-                            decoration: InputDecoration(
-                              hintText: 'Ej: Node.js, HTML, React',
-                              hintStyle:
-                                  TextStyle(color: AppTheme.lightTextSecondary),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(color: AppTheme.lightPrimary),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: Icon(Icons.add_circle,
-                              color: AppTheme.lightPrimary, size: 32),
-                          onPressed: () {
-                            final newKeyword = keywordController.text.trim();
-                            if (newKeyword.isNotEmpty) {
-                              final formatted = _formatKeyword(newKeyword);
-                              if (!keywords.contains(formatted)) {
-                                setState(() {
-                                  keywords.add(formatted);
-                                });
-                                keywordController.clear();
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content:
-                                        Text('La palabra clave ya existe.'),
-                                    duration: Duration(seconds: 2),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Palabras clave actuales (${keywords.length})',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.lightPrimary),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: keywords.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Text(
-                                'No hay palabras clave\n(Se eliminarán todas al guardar)',
-                                textAlign: TextAlign.center,
-                                style:
-                                    TextStyle(color: Colors.grey, fontSize: 13),
-                              ),
-                            )
-                          : Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: keywords.map((word) {
-                                return Chip(
-                                  label: Text(word),
-                                  deleteIcon: const Icon(Icons.close, size: 18),
-                                  onDeleted: () {
-                                    setState(() {
-                                      keywords.remove(word);
-                                    });
-                                  },
-                                  backgroundColor:
-                                      AppTheme.lightSecondary.withOpacity(0.2),
-                                );
-                              }).toList(),
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.lightPrimary,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () async {
-                      // ✅ VERIFICAR SI HUBO CAMBIOS
-                      bool huboChangios =
-                          keywords.length != keywordsOriginales.length ||
-                              !keywords
-                                  .every((k) => keywordsOriginales.contains(k));
-
-                      if (!huboChangios) {
-                        // Si no hubo cambios, solo cerrar
-                        Navigator.pop(context);
-                        return;
-                      }
-
-                      if (keywords.isEmpty && currentKeywords.isNotEmpty) {
-                        final confirmar = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Confirmar'),
-                            content: const Text(
-                                '¿Estás seguro de eliminar todas las palabras clave?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancelar'),
-                              ),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                ),
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text(
-                                  'Eliminar todas',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (confirmar != true) return;
-                      }
-
-                      Navigator.pop(context);
-                      await _guardarPalabrasClave(keywords);
-                    },
-                    child: const Text(
-                      'Guardar y cerrar',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _guardarPalabrasClave(List<String> keywords) async {
-    try {
-      final storage = StorageService();
-
-      final token = await storage.getToken();
-      final userId = await storage.getUserId();
-
-      if (token == null || userId == null) {
-        throw Exception('Token o ID de usuario no disponibles');
-      }
-
-      final response = await http.put(
-        Uri.parse('http://localhost:3210/perfil/$userId/palabras-clave'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(keywords),
-      );
-
-      if (response.statusCode == 200) {
-        await _fetchPerfilData();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                keywords.isEmpty
-                    ? 'Palabras clave eliminadas correctamente.'
-                    : 'Palabras clave guardadas correctamente.',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else if (response.statusCode == 401) {
-        throw Exception('Sesión expirada. Por favor, inicia sesión de nuevo.');
-      } else {
-        String errorMsg = 'Error al guardar palabras clave';
-        ;
-        if (response.body.isNotEmpty) {
-          try {
-            final decoded = json.decode(response.body);
-            errorMsg = decoded['message'] ?? errorMsg;
-          } catch (e) {
-            print('Error al decodificar el mensaje de error: $e');
-          }
-        }
-        throw Exception(errorMsg);
-      }
-    } catch (e) {
-      print('Error al guardar palabras clave: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar palabras clave: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 }
